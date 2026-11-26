@@ -1,0 +1,33 @@
+#sheet { display: none }
+
+@page { size: A4; margin: 12mm }
+
+@media print {
+  :root {
+    --ink: #000; --muted: #333; --edge: #000; --bg: #e6e6e6; --surface: #fff; --accent: #000;
+    color-scheme: light; background: #fff; font-size: 12pt; font-weight: 500; print-color-adjust: exact;
+  }
+  body { display: block; height: auto; padding: 0 }
+  body > :not(#sheet) { display: none }
+  #sheet { display: block }
+
+  #sheet .doc {
+    gap: 7mm; max-width: none; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: none;
+    & > header { gap: 2mm 8mm; padding-block-end: 4mm; border-block-end: 1mm solid var(--ink) }
+    & hgroup { & h1 { font-size: 22pt; font-weight: 900 } & p { font-size: 10.5pt } }
+    & header img { width: 20mm; filter: grayscale(1) contrast(1.4) }
+    & dl { grid-template-columns: auto 32mm; & dd { font-weight: 800 } }
+    & .party { padding: 3mm 4mm; font-size: 13pt; background: var(--bg); border-inline-start: 1.5mm solid var(--ink); & b { font-weight: 900 } }
+    & table { border-collapse: collapse; border: 0; border-radius: 0; overflow: visible }
+    & :is(th, td) { padding: 2.5mm 3mm; border: .4mm solid var(--edge) }
+    & th { font-size: 11pt; font-weight: 800; color: var(--ink); background: var(--bg); border-block-end-width: .8mm }
+    & td { font-weight: 600 }
+    & tbody tr { break-inside: avoid; &:nth-child(even) td { background: #f4f4f4 } }
+    & footer {
+      justify-items: end; gap: 2.5mm; break-inside: avoid;
+      & p { width: min(100%, 100mm) }
+      & p:first-child { padding: 3mm 4mm; font-size: 14pt; font-weight: 900; border: .8mm solid var(--ink) }
+      & p:nth-child(2) { width: 100%; justify-content: end; font-size: 11pt; & span + span { font-weight: 800 } }
+    }
+  }
+}
