@@ -1,5 +1,5 @@
 import brand from '@/brand.js'
-import { fields, grids, roles } from '@/fields.js'
+import { fields, grids, fit, roleOf } from '@/fields.js'
 import { t, tr, ts, lang, digits, num, date, words } from '@/i18n.js'
 import { match, hit, terms } from '@/search.js'
 
@@ -89,7 +89,7 @@ const attr = (name, extra = '') => {
 }
 const input = (name, value = '', attrs = '') => `<input name="${name}" value="${h(value)}" dir="auto" ${attrs}>`
 const control = (name, value, extra) => input(name, value ?? '', attr(name, extra))
-const opts = (pairs, cur) => pairs.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${h(l)}</option>`).join('')
+export const opts = (pairs, cur) => pairs.map(([v, l]) => `<option value="${h(v)}"${`${v}` === `${cur ?? ''}` ? ' selected' : ''}>${h(l)}</option>`).join('')
 const tools = (attrs = '') => `<td class="tools"><button type="button" data-act="del" data-tone="del" aria-label="${t.del}"${attrs}>×</button></td>`
 const pad = rows => rows.length ? rows : [{}]
 const pick = (name, values, cur) => `<fieldset class="switch">${values.map(v => `<label><input type="radio" name="${name}" value="${v}"${v === cur ? ' checked' : ''}><span>${t[v]}</span></label>`).join('')}</fieldset>`
@@ -99,7 +99,6 @@ const ent = (e = {}, list = [], n = list.filter(r => r.entity_id === e.id).lengt
 
 export const lines = { items: row, pays: pay, entities: ent }
 
-const fit = (e, kind, side) => e.kind === kind && (e.role || 'buyer') === roles[side]
 const party = (r, entities, kind = r.kind ?? '', side = sideOf(r)) => `<fieldset class="party"><select name="kind" ${req} aria-label="${t.kind}">${opts([['', t.kind], ...fields.kind.options.map(k => [k, t[k]]), ['other', t.other]], kind)}</select><select name="entity" aria-invalid="false" aria-label="${ts(side, 'party')}"${kind && kind !== 'other' ? ' required' : ''}>${opts([['', t.pick], ...entities.filter(e => fit(e, kind, side)).map(e => [e.id, e.name])], r.entity_id ?? '')}</select>${input('party', r.entity_id ? '' : r.party, `placeholder="${ts(side, 'partyName')}" aria-invalid="false"${kind === 'other' ? ' required' : ''}`)}</fieldset>`
 
 const editor = (r, list, entities, side = sideOf(r), sum = tally(r.items), paid = tally(r.payments, 'amount'), base = r.base ?? entities.find(e => e.id === r.entity_id)?.debt ?? 0) => `
@@ -125,7 +124,7 @@ const editor = (r, list, entities, side = sideOf(r), sum = tally(r.items), paid 
 const team = (entities, list, role = 'buyer') => `
   <form id="entities" class="doc" novalidate>
     ${pick('role', ['buyer', 'seller'], role)}
-    ${grid('entities', pad(entities.filter(e => (e.role || 'buyer') === role)).map(e => ent(e, list)).join(''), t.entities, role === 'seller' ? 'buy' : 'sale')}
+    ${grid('entities', pad(entities.filter(e => roleOf(e) === role)).map(e => ent(e, list)).join(''), t.entities, role === 'seller' ? 'buy' : 'sale')}
     <nav class="acts"><button class="primary">${t.save}</button></nav>
   </form>`
 

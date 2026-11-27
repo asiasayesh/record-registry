@@ -7,7 +7,7 @@
     --ink: #000; --muted: #333; --edge: #000; --bg: #e6e6e6; --surface: #fff; --accent: #000;
     color-scheme: light; background: #fff; font-size: 12pt; font-weight: 500; print-color-adjust: exact;
   }
-  body { display: block; height: auto; padding: 0; background: #fff; &::before { content: none } }
+  body { display: block; height: auto; padding: 0; background: #fff }
   body > :not(#sheet) { display: none }
   #sheet { display: block }
 

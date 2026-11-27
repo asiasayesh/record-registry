@@ -1,5 +1,5 @@
 import init from '@sqlite.org/sqlite-wasm'
-import { absorb, read } from './merge.js'
+import { absorb, read, rows } from './merge.js'
 
 const file = '/registry.sqlite3'
 const keep = 7
@@ -23,8 +23,6 @@ const migrations = [
   ['records', 'side', `ALTER TABLE records ADD COLUMN side TEXT DEFAULT 'sale'`],
   ['entities', 'role', `ALTER TABLE entities ADD COLUMN role TEXT DEFAULT 'buyer'`],
 ]
-
-const rows = (db, sql, bind) => db.exec({ sql, bind: bind?.length ? bind : undefined, rowMode: 'object', returnValue: 'resultRows' })
 
 const migrate = db => {
   db.exec(schema)

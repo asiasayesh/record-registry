@@ -56,6 +56,7 @@ const dict = {
 }
 
 export const lang = () => document.documentElement.lang
+export const text = (k, l) => dict[l]?.[k] ?? ''
 export const t = new Proxy({}, { get: (_, k) => dict[lang()]?.[k] ?? k })
 export const tr = v => v?.[lang()] ?? v
 export const ts = (side, k) => dict[lang()]?.copy?.[side]?.[k] ?? t[k]

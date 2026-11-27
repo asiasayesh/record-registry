@@ -1,4 +1,4 @@
-const rows = (db, sql, bind) => db.exec({ sql, bind: bind?.length ? bind : undefined, rowMode: 'object', returnValue: 'resultRows' })
+export const rows = (db, sql, bind) => db.exec({ sql, bind: bind?.length ? bind : undefined, rowMode: 'object', returnValue: 'resultRows' })
 const num = v => v == null ? null : Number(v)
 const key = e => `${e.role ?? 'buyer'}\0${e.kind ?? ''}\0${e.name ?? ''}`
 

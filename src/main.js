@@ -2,8 +2,8 @@ import '@/style.css'
 import '@/doc.css'
 import '@/print.css'
 import { t, setLang, lang, ascii, toNum, num } from '@/i18n.js'
-import { fields, roles } from '@/fields.js'
-import { h, history, record, lines, paper, balance, owed } from '@/view.js'
+import { fields, fit } from '@/fields.js'
+import { h, history, record, lines, paper, balance, owed, opts } from '@/view.js'
 import * as db from '@/store.js'
 
 const $ = s => document.querySelector(s)
@@ -46,12 +46,10 @@ const route = async () => {
 
 const cell = (tr, name) => tr.querySelector(`[name=${name}]`)
 const rows = (form, k) => [...form.querySelectorAll(`.${k} tbody tr`)]
-const cast = (name, v) => name === 'stamp' ? Number(v) : fields[name]?.type === 'number' || name === 'ref' ? toNum(v) : v
+const cast = (name, v) => fields[name]?.type === 'number' ? toNum(v) : v
 const item = tr => Object.fromEntries([...tr.querySelectorAll('input, select')].map(i => [i.name, cast(i.name, i.value.trim())]))
 const ent = id => state.entities.find(e => e.id === id) ?? {}
-const roleOf = e => e.role || 'buyer'
 const sideOf = form => form.side?.value || 'sale'
-const fit = (e, kind, side) => e.kind === kind && roleOf(e) === roles[side]
 
 const read = (form, kind = form.kind.value, side = sideOf(form), e = ent(toNum(form.entity.value)), hit = fit(e, kind, side)) => ({
   id: toNum(form.serial.value),
@@ -86,9 +84,8 @@ const restore = async (file, mode) => file && confirm(t[`${mode}Ask`]) && (
   location.hash = '#/'
 )
 
-const options = (pairs, cur) => pairs.map(([v, l]) => `<option value="${h(v)}"${`${v}` === `${cur ?? ''}` ? ' selected' : ''}>${h(l)}</option>`).join('')
 const tune = (form, kind = form.kind.value, side = sideOf(form), e = ent(toNum(form.entity.value)), id = fit(e, kind, side) ? form.entity.value : '') => (
-  form.entity.innerHTML = options([['', t.pick], ...state.entities.filter(x => fit(x, kind, side)).map(x => [x.id, x.name])], id),
+  form.entity.innerHTML = opts([['', t.pick], ...state.entities.filter(x => fit(x, kind, side)).map(x => [x.id, x.name])], id),
   form.entity.required = !!kind && kind !== 'other',
   form.party.required = kind === 'other',
   form.entity.ariaInvalid = form.party.ariaInvalid = 'false'
@@ -122,10 +119,9 @@ const acts = {
 
 const tone = () => localStorage.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
 const setTheme = s => (document.documentElement.dataset.theme = localStorage.theme = s, Object.assign($('[data-act=theme]'), { ariaLabel: t[s], title: t[s] }).dataset.label = s)
-const palettes = ['ink', 'slate', 'sand', 'blue', 'sea', 'green', 'plum']
-const setPalette = s => (
-  document.documentElement.dataset.palette = localStorage.palette = palettes.includes(s) ? s : 'ink',
-  [...document.querySelectorAll('[data-act=palette]')].map(b => b.ariaPressed = b.dataset.palette === localStorage.palette)
+const setPalette = (s, buttons = [...document.querySelectorAll('[data-act=palette]')], name = buttons.some(b => b.dataset.palette === s) ? s : 'ink') => (
+  document.documentElement.dataset.palette = localStorage.palette = name,
+  buttons.map(b => b.ariaPressed = b.dataset.palette === name)
 )
 
 const controls = root => [...root.querySelectorAll('input:not([type=hidden]):not([readonly]), select')]

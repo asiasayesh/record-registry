@@ -7,15 +7,7 @@
     &:has(.switch) { grid-template-areas: "brand logo" "switch switch" "meta meta" }
     & .switch { grid-area: switch }
   }
-  & .switch {
-    display: flex; gap: 2px; margin: 0; padding: 2px; border: 1px solid var(--edge); border-radius: var(--r); background: var(--bg);
-    & label {
-      flex: 1; text-align: center; line-height: 28px; border-radius: var(--r-sm); cursor: pointer; color: var(--muted);
-      &:has(:checked) { background: var(--accent-soft); color: var(--ink); font-weight: 700 }
-      &:has(:focus-visible) { outline: 2px solid var(--accent) }
-    }
-    & input { position: absolute; opacity: 0; &:focus-visible { outline: none } }
-  }
+  & .switch { margin: 0 }
   & hgroup { grid-area: brand; & h1 { font-size: 1.7em; font-weight: 700; line-height: 1.3 } & p { color: var(--muted) } }
   & header img { grid-area: logo; width: 56px; justify-self: end }
   & dl {
