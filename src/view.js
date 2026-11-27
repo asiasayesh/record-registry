@@ -90,7 +90,7 @@ const money = 'type="number" min="0" step="any"'
 const req = 'required aria-invalid="false"'
 const input = (name, value = '', attrs = '') => `<input name="${name}" value="${h(value)}" dir="auto" ${attrs}>`
 const opts = (pairs, cur) => pairs.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${h(l)}</option>`).join('')
-const tools = (attrs = '') => `<td class="tools"><button type="button" data-act="done" data-tone="credit" aria-pressed="false" aria-label="${t.done}">✓</button><button type="button" data-act="del" data-tone="del" aria-label="${t.del}"${attrs}>×</button></td>`
+const tools = (attrs = '') => `<td class="tools"><button type="button" data-act="del" data-tone="del" aria-label="${t.del}"${attrs}>×</button></td>`
 const pad = rows => rows.length ? rows : [{}]
 
 const row = (it = {}) => `<tr><td></td>${[

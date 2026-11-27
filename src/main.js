@@ -104,7 +104,6 @@ const acts = {
     body.insertAdjacentHTML('beforeend', lines[of]()),
     body.lastElementChild.querySelector('input:not([type=hidden])').focus()
   ),
-  done: el => el.ariaPressed === 'true' ? el.ariaPressed = 'false' : gate(el.closest('tr')) && (el.ariaPressed = 'true'),
   del: (el, form = el.form) => (el.closest('tr').remove(), form.id === 'editor' && recalc(form)),
   print: async ({ dataset: { id } }) => (sheet(id ? await db.get(+id) : state.cur ?? draft()), print()),
   cancel: async ({ dataset: { id } }) => (await db.cancel(+id), await route()),
@@ -141,8 +140,7 @@ const submits = {
 }
 
 addEventListener('beforeinput', e => e.target.type === 'number' && /[۰-۹٠-٩٫,]/.test(e.data ?? '') && (e.preventDefault(), e.target.value = ascii(e.target.value + e.data).replace(/[,٬]/g, '').replace('٫', '.'), e.target.dispatchEvent(new Event('input', { bubbles: true }))))
-const untick = el => el && (el.ariaPressed = 'false')
-addEventListener('input', e => (relax(e.target), untick(e.target.closest('tr')?.querySelector('[data-act=done]')), inputs[e.target.form?.id]?.(e)))
+addEventListener('input', e => (relax(e.target), inputs[e.target.form?.id]?.(e)))
 addEventListener('invalid', e => e.target.ariaInvalid = 'true', true)
 const act = el => acts[el?.dataset.act]?.(el)
 addEventListener('click', e => act(e.target.closest('[data-act]')))

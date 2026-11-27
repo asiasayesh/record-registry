@@ -56,4 +56,22 @@ which would reduce their total entity balance
 user adding payment in record page can not exceed the total amount
 
 for example if we have an entity with zero dept
-and he make a new purchase the record
+and he make a new purchase the record amount rest would show red to be paid
+
+---
+
+we have a major change planning, so far this app is for sales records
+
+we are now considering keeping records of our purchases records
+
+fields could be
+
+- item
+- units
+- per unit cost
+- total cost
+
+our entities section then could have a switch for buyer or seller
+
+also do a major refactor be more functional, declarative and clean
+figure out which are fields and their required or not and their type

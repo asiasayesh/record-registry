@@ -14,6 +14,7 @@ const link = (db, entities) => {
   return Object.fromEntries(entities.map(e => {
     const have = byKey[key(e)]
     const next = have ?? putEntity(db, e, !used.has(num(e.id)))
+    have && rows(db, 'UPDATE entities SET debt = ? WHERE id = ?', [e.debt ?? 0, have])
     have ?? (byKey[key(e)] = next, used.add(next))
     return [num(e.id), next]
   }))
@@ -26,13 +27,14 @@ export const read = db => ({
   payments: Object.groupBy(rows(db, 'SELECT record_id, n, amount, at, note FROM payments'), r => num(r.record_id)),
 })
 
-export const absorb = (db, src) => {
-  const linked = link(db, src.entities)
-  const have = new Set(rows(db, 'SELECT id FROM records').map(r => num(r.id)))
-  src.records.filter(r => !have.has(num(r.id))).map(r => {
-    const id = num(r.id)
-    rows(db, 'INSERT INTO records (id, entity_id, party, at, opened, cancelled) VALUES (?, ?, ?, ?, ?, ?)', [id, r.entity_id == null ? null : linked[num(r.entity_id)] ?? null, r.party, r.at, r.opened, r.cancelled])
-    ;(src.items[id] ?? []).map(i => rows(db, 'INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)', [id, i.n, i.description, i.qty, i.unit, i.total]))
-    ;(src.payments[id] ?? []).map(p => rows(db, 'INSERT INTO payments VALUES (?, ?, ?, ?, ?)', [id, p.n, p.amount, p.at, p.note]))
-  })
-}
+const put = (db, src, linked, r, id = num(r.id)) => (
+  rows(db, `INSERT INTO records (id, entity_id, party, at, opened, cancelled) VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT (id) DO UPDATE SET entity_id = excluded.entity_id, party = excluded.party, at = excluded.at, opened = excluded.opened, cancelled = excluded.cancelled`,
+    [id, r.entity_id == null ? null : linked[num(r.entity_id)] ?? null, r.party, r.at, r.opened, r.cancelled]),
+  rows(db, 'DELETE FROM items WHERE record_id = ?', [id]),
+  rows(db, 'DELETE FROM payments WHERE record_id = ?', [id]),
+  (src.items[id] ?? []).map(i => rows(db, 'INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)', [id, i.n, i.description, i.qty, i.unit, i.total])),
+  (src.payments[id] ?? []).map(p => rows(db, 'INSERT INTO payments VALUES (?, ?, ?, ?, ?)', [id, p.n, p.amount, p.at, p.note]))
+)
+
+export const absorb = (db, src, linked = link(db, src.entities)) => src.records.map(r => put(db, src, linked, r))
