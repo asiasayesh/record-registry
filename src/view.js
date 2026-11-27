@@ -32,14 +32,14 @@ const listing = html => html || `<p class="hint">${t.none}</p>`
 export const history = ({ list, filter, cur }) => listing(modes[filter.mode](list.filter(match(filter)), cur?.id, filter.q ?? ''))
 
 const grids = {
-  items: { add: 'addRow', cols: ['row', 'description', 'qty', 'unit', 'total'] },
-  pays: { add: 'addPay', cols: ['row', 'note', 'date', 'amount'] },
+  items: { add: 'addRow', tone: 'debit', cols: ['row', 'description', 'qty', 'unit', 'total'] },
+  pays: { add: 'addPay', tone: 'credit', cols: ['row', 'note', 'date', 'amount'] },
   entities: { add: 'addEntity', cols: ['row', 'name', 'kind', 'records', 'debt'] },
 }
 const thead = (k, extra = '') => `<thead><tr>${grids[k].cols.map(c => `<th>${t[c]}</th>`).join('')}${extra}</tr></thead>`
 const plus = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'
-const grid = (k, body, cap = '') => `<table class="${k}">${cap && `<caption>${cap}</caption>`}${thead(k, '<th></th>')}<tbody>${body}</tbody></table>
-  <button type="button" class="add" data-act="row" data-of="${k}" data-tone="go" aria-label="${t[grids[k].add]}" title="${t[grids[k].add]}">${plus}</button>`
+const grid = (k, body, cap = '', tone = grids[k].tone) => `<table class="${k}"${tone ? ` data-tone="${tone}"` : ''}>${cap && `<caption>${cap}</caption>`}${thead(k, '<th></th>')}<tbody>${body}</tbody></table>
+  <button type="button" class="add" data-act="row" data-of="${k}"${tone ? ` data-tone="${tone}"` : ''} aria-label="${t[grids[k].add]}" title="${t[grids[k].add]}">${plus}</button>`
 
 const head = (r, serial, party) => `
   <header>
@@ -72,65 +72,65 @@ export const paper = (r, acts = '') => `
     </footer>
   </article>`
 
-export const balance = (list, r, sum, paid) => ({
+export const balance = (list, r, sum, paid, base = r.base ?? 0) => ({
   paid,
   rest: sum - paid,
-  prior: owed(list.filter(x => x.id < r.id), r.entity_id),
-  debt: owed(list, r.entity_id, r.id) + (r.cancelled ? 0 : sum - paid),
+  prior: base + owed(list.filter(x => x.id < r.id), r.entity_id),
+  debt: base + owed(list, r.entity_id, r.id) + (r.cancelled ? 0 : sum - paid),
 })
 
 const dues = (v, keys = Object.keys(v)) => keys
-  .map(k => `<p class="due"><span>${t[k]}</span><output name="${k}" data-owe="${v[k] > 0}">${num(v[k])}</output></p>`)
+  .map(k => `<p class="due"><span>${t[k]}</span><output name="${k}" data-owe="${v[k] > 0}"${k === 'paid' ? ' data-tone="credit"' : ''}>${num(v[k])}</output></p>`)
   .join('')
 
 const doc = (r, list) => paper(r, `${dues(balance(list, r, r.sum, r.paid), r.entity_id ? undefined : ['paid', 'rest'])}<nav class="acts">${r.cancelled ? '' : `<a class="btn" data-tone="edit" href="#/${r.id}/edit">${t.edit}</a>`}<button type="button" data-act="cancel" data-tone="cancel" data-id="${r.id}" aria-pressed="${r.cancelled ? 'true' : 'false'}">${t.cancelled}</button><button type="button" data-act="print" data-tone="out">${t.print}</button></nav>`)
 
 const kinds = ['person', 'company']
 const money = 'type="number" min="0" step="any"'
+const req = 'required aria-invalid="false"'
 const input = (name, value = '', attrs = '') => `<input name="${name}" value="${h(value)}" dir="auto" ${attrs}>`
 const opts = (pairs, cur) => pairs.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${h(l)}</option>`).join('')
-const del = (attrs = '') => `<td><button type="button" data-act="del" data-tone="del" aria-label="${t.del}"${attrs}>×</button></td>`
+const tools = (attrs = '') => `<td class="tools"><button type="button" data-act="done" data-tone="credit" aria-pressed="false" aria-label="${t.done}">✓</button><button type="button" data-act="del" data-tone="del" aria-label="${t.del}"${attrs}>×</button></td>`
 const pad = rows => rows.length ? rows : [{}]
 
 const row = (it = {}) => `<tr><td></td>${[
-  input('description', it.description),
-  input('qty', it.qty),
-  input('unit', it.unit || '', money),
-  input('total', it.total || '', money),
-].map(c => `<td>${c}</td>`).join('')}${del()}</tr>`
+  input('description', it.description, req),
+  input('qty', it.qty, req),
+  input('unit', it.unit || '', `${money} ${req}`),
+  input('total', it.total || '', `${money} readonly tabindex="-1"`),
+].map(c => `<td>${c}</td>`).join('')}${tools()}</tr>`
 
-const pay = ({ stamp = Date.now(), note, amount } = {}) => `<tr><td></td><td><input type="hidden" name="stamp" value="${stamp}">${input('note', note)}</td><td>${date(stamp)}</td><td>${input('amount', amount || '', money)}</td>${del()}</tr>`
+const pay = ({ stamp = Date.now(), note, amount } = {}) => `<tr><td></td><td><input type="hidden" name="stamp" value="${stamp}">${input('note', note, req)}</td><td>${date(stamp)}</td><td>${input('amount', amount || '', `${money} ${req}`)}</td>${tools()}</tr>`
 
-const ent = (e = {}, list = [], n = list.filter(r => r.entity_id === e.id).length) => `<tr><td></td><td><input type="hidden" name="ref" value="${e.id ?? ''}">${input('party', e.name)}</td><td><select name="kind">${opts(kinds.map(k => [k, t[k]]), e.kind)}</select></td><td>${digits(n)}</td><td>${num(owed(list, e.id))}</td>${del(n ? ' disabled' : '')}</tr>`
+const ent = (e = {}, list = [], n = list.filter(r => r.entity_id === e.id).length, due = owed(list, e.id)) => `<tr><td>${e.id ? sn(e.id) : ''}</td><td><input type="hidden" name="ref" value="${e.id ?? ''}">${input('party', e.name, req)}</td><td><select name="kind" ${req}>${opts(kinds.map(k => [k, t[k]]), e.kind)}</select></td><td>${digits(n)}</td><td>${input('debt', (e.debt || 0) + due, `type="number" min="${due}" step="any" ${req}`)}</td>${tools(n ? ' disabled' : '')}</tr>`
 
 export const lines = { items: row, pays: pay, entities: ent }
 
-const pick = (entities, cur, g = Object.groupBy(entities, e => e.kind)) => `<select name="entity" required aria-label="${t.party}"><option value="">${t.pick}</option>${kinds.filter(k => g[k]).map(k => `<optgroup label="${t[k]}">${opts(g[k].map(e => [e.id, e.name]), cur)}</optgroup>`).join('')}${opts([['other', t.other]], cur)}</select>`
-const party = (r, entities) => `<fieldset class="party">${pick(entities, r.entity_id ?? (r.kind === 'other' ? 'other' : ''))}${input('party', r.entity_id ? '' : r.party, `placeholder="${t.partyName}"`)}<a class="btn" data-tone="edit" href="#/entities">${t.entities}</a></fieldset>`
+const party = (r, entities, kind = r.kind ?? '') => `<fieldset class="party"><select name="kind" ${req} aria-label="${t.kind}">${opts([['', t.kind], ...kinds.map(k => [k, t[k]]), ['other', t.other]], kind)}</select><select name="entity" aria-invalid="false" aria-label="${t.party}"${kind && kind !== 'other' ? ' required' : ''}>${opts([['', t.pick], ...entities.filter(e => e.kind === kind).map(e => [e.id, e.name])], r.entity_id ?? '')}</select>${input('party', r.entity_id ? '' : r.party, `placeholder="${t.partyName}" aria-invalid="false"${kind === 'other' ? ' required' : ''}`)}</fieldset>`
 
-const editor = (r, list, entities, sum = tally(r.items), paid = tally(r.payments, 'amount')) => `
-  <form id="editor" class="doc">
+const editor = (r, list, entities, sum = tally(r.items), paid = tally(r.payments, 'amount'), base = r.base ?? entities.find(e => e.id === r.entity_id)?.debt ?? 0) => `
+  <form id="editor" class="doc" novalidate>
     <input type="hidden" name="at" value="${r.at}">
     <input type="hidden" name="serial" value="${r.id}">
     <input type="hidden" name="fresh" value="${r.fresh ? 1 : ''}">
     ${head(r, sn(r.id), party(r, entities))}
-    ${grid('items', pad(r.items).map(row).join(''))}
+    ${grid('items', r.items.map(row).join(''), t.items)}
     ${grid('pays', r.payments.map(pay).join(''), t.payments)}
     <footer>
-      <p><span>${t.sum}</span><output name="sum">${num(sum)}</output></p>
-      ${dues(balance(list, r, sum, paid))}
+      <p><span>${t.sum}</span><output name="sum" data-tone="debit">${num(sum)}</output></p>
+      ${dues(balance(list, r, sum, paid, base))}
       <nav class="acts">
         <button type="button" data-act="print" data-tone="out">${t.print}</button>
         <a class="btn" data-tone="cancel" href="#/${r.fresh ? '' : r.id}">${t.cancel}</a>
-        <button class="primary" data-tone="go">${t.save}</button>
+        <button class="primary">${t.save}</button>
       </nav>
     </footer>
   </form>`
 
 const team = (entities, list) => `
-  <form id="entities" class="doc">
+  <form id="entities" class="doc" novalidate>
     ${grid('entities', pad(entities).map(e => ent(e, list)).join(''), t.entities)}
-    <nav class="acts"><button class="primary" data-tone="go">${t.save}</button></nav>
+    <nav class="acts"><button class="primary">${t.save}</button></nav>
   </form>`
 
 const recent = list => [...new Set([...list.filter(r => r.opened).toSorted((a, b) => b.opened - a.opened), ...list])].slice(0, 3)

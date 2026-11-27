@@ -2,7 +2,7 @@ import '@/style.css'
 import '@/doc.css'
 import '@/print.css'
 import { t, setLang, lang, ascii, toNum, num } from '@/i18n.js'
-import { h, history, record, lines, paper, balance } from '@/view.js'
+import { h, history, record, lines, paper, balance, owed } from '@/view.js'
 import * as db from '@/store.js'
 
 const $ = s => document.querySelector(s)
@@ -24,11 +24,11 @@ const state = new Proxy({ list: [], entities: [], filter: { mode: 'date', days: 
 })
 
 const reload = async () => ([state.list, state.entities] = await Promise.all([db.list(), db.entities()]))
-const blank = id => ({ id, fresh: true, entity_id: null, at: Date.now(), items: [{}], payments: [] })
+const blank = id => ({ id, fresh: true, entity_id: null, at: Date.now(), items: [], payments: [] })
 
 const routes = {
   '': async () => ({ cur: null, edit: null, span: null }),
-  entities: async () => ({ cur: null, edit: null, span: null }),
+  entities: async () => (await reload(), { cur: null, edit: null, span: null }),
   new: async () => ({ cur: null, edit: blank(await db.next()), span: null }),
   span: async () => (await show(), { cur: null, edit: null }),
   edit: async id => db.get(id).then(r => r?.cancelled ? { cur: r, edit: null, span: null } : { cur: null, edit: r, span: null }),
@@ -39,21 +39,21 @@ const route = async () => {
   const [, id = '', act = 'view'] = location.hash.split('/')
   Object.assign(state, await (routes[id] ?? routes[act])(id), { roster: id === 'entities' })
   $('#span').ariaCurrent = id === 'span' ? 'page' : null
-  $(`#bar a[data-tone="records"]`).ariaCurrent = id === 'entities' || id === 'new' ? null : 'page'
+  $(`#bar a[data-t="records"]`).ariaCurrent = id === 'entities' || id === 'new' ? null : 'page'
   $(`#bar a[href="#/entities"]`).ariaCurrent = id === 'entities' ? 'page' : null
 }
 
 const cell = (tr, name) => tr.querySelector(`[name=${name}]`)
 const rows = (form, k) => [...form.querySelectorAll(`.${k} tbody tr`)]
-const parse = { unit: toNum, total: toNum, amount: toNum, stamp: Number, ref: toNum }
+const parse = { unit: toNum, total: toNum, amount: toNum, stamp: Number, ref: toNum, debt: toNum }
 const item = tr => Object.fromEntries([...tr.querySelectorAll('input, select')].map(i => [i.name, (parse[i.name] ?? String)(i.value.trim())]))
 const ent = id => state.entities.find(e => e.id === id) ?? {}
 
-const read = (form, e = ent(toNum(form.entity.value))) => ({
+const read = (form, kind = form.kind.value, e = ent(toNum(form.entity.value)), hit = e.kind === kind) => ({
   id: toNum(form.serial.value),
-  entity_id: e.id ?? null,
-  party: e.name ?? form.party.value.trim(),
-  kind: e.kind ?? form.entity.value,
+  entity_id: hit ? e.id : null,
+  party: hit ? e.name : form.party.value.trim(),
+  kind,
   at: +form.at.value,
   fresh: !!form.fresh.value,
   items: rows(form, 'items').map(item).filter(i => i.description || i.total),
@@ -66,7 +66,7 @@ const put = (out, v) => (out.value = num(v), out.dataset.owe = v > 0)
 const cap = (form, sum, paid) => rows(form, 'pays').map(tr => cell(tr, 'amount')).map(i => i.max = Math.max(0, sum - paid + toNum(i.value)))
 const recalc = (form, sum = tally(form, 'items', 'total'), paid = tally(form, 'pays', 'amount')) => (
   cap(form, sum, paid),
-  Object.entries({ sum, ...balance(state.list, { id: toNum(form.serial.value), entity_id: toNum(form.entity.value) }, sum, paid) })
+  Object.entries({ sum, ...balance(state.list, { id: toNum(form.serial.value), entity_id: toNum(form.entity.value) }, sum, paid, ent(toNum(form.entity.value)).debt) })
     .map(([k, v]) => put(form[k], v))
 )
 const sheet = r => r && ($('#sheet').innerHTML = paper(r))
@@ -74,17 +74,29 @@ const draft = (form = $('#editor')) => form && read(form)
 
 const download = (bytes, name) => Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([bytes])), download: name }).click()
 
-const restore = async file => confirm(t.replace) && (
-  await db.load(new Uint8Array(await file.arrayBuffer())),
+const restore = async (file, mode) => file && confirm(t[`${mode}Ask`]) && (
+  await db.load(new Uint8Array(await file.arrayBuffer()), mode),
   await reload(),
   $('#settings').close(),
   location.hash = '#/'
 )
 
+const options = (pairs, cur) => pairs.map(([v, l]) => `<option value="${h(v)}"${`${v}` === `${cur ?? ''}` ? ' selected' : ''}>${h(l)}</option>`).join('')
+const tune = (form, kind = form.kind.value, id = ent(toNum(form.entity.value)).kind === kind ? form.entity.value : '') => (
+  form.entity.innerHTML = options([['', t.pick], ...state.entities.filter(e => e.kind === kind).map(e => [e.id, e.name])], id),
+  form.entity.required = !!kind && kind !== 'other',
+  form.party.required = kind === 'other',
+  form.entity.ariaInvalid = form.party.ariaInvalid = 'false'
+)
+
 const inputs = {
   filters: ({ target }) => (state.filter = Object.fromEntries(new FormData(target.form)), target.name === 'days' && show()),
-  editor: ({ target }) => (['qty', 'unit'].includes(target.name) && auto(target.closest('tr')), recalc(target.form)),
-  io: ({ target }) => restore(target.files[0]).finally(() => target.value = ''),
+  editor: ({ target }) => (
+    target.name === 'kind' && tune(target.form),
+    ['qty', 'unit'].includes(target.name) && auto(target.closest('tr')),
+    recalc(target.form)
+  ),
+  io: ({ target }) => restore(target.files[0], target.name).finally(() => target.value = ''),
 }
 
 const acts = {
@@ -92,6 +104,7 @@ const acts = {
     body.insertAdjacentHTML('beforeend', lines[of]()),
     body.lastElementChild.querySelector('input:not([type=hidden])').focus()
   ),
+  done: el => el.ariaPressed === 'true' ? el.ariaPressed = 'false' : gate(el.closest('tr')) && (el.ariaPressed = 'true'),
   del: (el, form = el.form) => (el.closest('tr').remove(), form.id === 'editor' && recalc(form)),
   print: async ({ dataset: { id } }) => (sheet(id ? await db.get(+id) : state.cur ?? draft()), print()),
   cancel: async ({ dataset: { id } }) => (await db.cancel(+id), await route()),
@@ -103,25 +116,34 @@ const acts = {
 
 const tone = () => localStorage.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
 const setTheme = s => (document.documentElement.dataset.theme = localStorage.theme = s, Object.assign($('[data-act=theme]'), { ariaLabel: t[s], title: t[s] }).dataset.label = s)
-const palettes = ['blue', 'sea', 'green', 'plum']
+const palettes = ['ink', 'slate', 'sand', 'blue', 'sea', 'green', 'plum']
 const setPalette = s => (
-  document.documentElement.dataset.palette = localStorage.palette = palettes.includes(s) ? s : 'blue',
+  document.documentElement.dataset.palette = localStorage.palette = palettes.includes(s) ? s : 'ink',
   [...document.querySelectorAll('[data-act=palette]')].map(b => b.ariaPressed = b.dataset.palette === localStorage.palette)
 )
 
+const fields = root => [...root.querySelectorAll('input:not([type=hidden]):not([readonly]), select')]
+const empty = i => ['qty', 'unit', 'amount'].includes(i.name) ? !(toNum(i.value) > 0) : !i.value.trim()
+const mark = i => (i.setCustomValidity(i.required && empty(i) ? t.need : ''), i.ariaInvalid = `${!i.validity.valid}`)
+const gate = root => (els => (els.map(mark), els.every(i => i.validity.valid || i.reportValidity())))(fields(root))
+const relax = el => ['editor', 'entities'].includes(el.form?.id) && el.setCustomValidity && (el.setCustomValidity(''), el.ariaInvalid = `${!el.validity.valid}`)
+
 const submits = {
   editor: async ({ target }) => {
+    if (!gate(target)) return
     const r = read(target)
     r.fresh && (r.id = await db.next())
     await db.save(r)
     await reload()
     location.hash = `#/${r.id}`
   },
-  entities: async ({ target }) => (await db.sync(rows(target, 'entities').map(item).filter(e => e.party)), reload()),
+  entities: async ({ target }) => gate(target) && (await db.sync(rows(target, 'entities').map(item).filter(e => e.party).map(e => ({ ...e, debt: Math.max(0, e.debt - owed(state.list, e.ref)) }))), reload()),
 }
 
 addEventListener('beforeinput', e => e.target.type === 'number' && /[۰-۹٠-٩٫,]/.test(e.data ?? '') && (e.preventDefault(), e.target.value = ascii(e.target.value + e.data).replace(/[,٬]/g, '').replace('٫', '.'), e.target.dispatchEvent(new Event('input', { bubbles: true }))))
-addEventListener('input', e => inputs[e.target.form?.id]?.(e))
+const untick = el => el && (el.ariaPressed = 'false')
+addEventListener('input', e => (relax(e.target), untick(e.target.closest('tr')?.querySelector('[data-act=done]')), inputs[e.target.form?.id]?.(e)))
+addEventListener('invalid', e => e.target.ariaInvalid = 'true', true)
 const act = el => acts[el?.dataset.act]?.(el)
 addEventListener('click', e => act(e.target.closest('[data-act]')))
 addEventListener('submit', e => (e.preventDefault(), submits[e.target.id]?.(e)))

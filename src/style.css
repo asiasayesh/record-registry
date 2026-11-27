@@ -1,60 +1,90 @@
 @property --hue {
   syntax: "<number>";
   inherits: true;
-  initial-value: 255;
+  initial-value: 250;
 }
-@property --mark {
-  syntax: "<number>";
-  inherits: false;
-  initial-value: 0;
-}
-
 :root {
-  --blue: 255;
-  --sea: 195;
-  --green: 145;
-  --plum: 325;
-  --hue: var(--blue);
-  --ink: light-dark(oklch(24% 0.03 var(--hue)), oklch(95% 0.02 var(--hue)));
-  --muted: light-dark(oklch(46% 0.05 var(--hue)), oklch(76% 0.05 var(--hue)));
-  --bg: light-dark(oklch(96% 0.025 var(--hue)), oklch(18% 0.04 var(--hue)));
-  --surface: light-dark(
-    oklch(98.5% 0.016 var(--hue)),
-    oklch(23% 0.05 var(--hue))
-  );
-  --edge: light-dark(oklch(82% 0.05 var(--hue)), oklch(38% 0.07 var(--hue)));
-  --accent: light-dark(oklch(52% 0.21 var(--hue)), oklch(78% 0.18 var(--hue)));
-  --accent-soft: light-dark(
-    oklch(91% 0.09 var(--hue)),
-    oklch(34% 0.1 var(--hue))
-  );
-  --on-accent: light-dark(#fff, oklch(16% 0.02 var(--hue)));
-  --shade: light-dark(oklch(0% 0 0 / 0.06), oklch(0% 0 0 / 0.35));
-  --shadow: 0 1px 2px var(--shade), 0 8px 24px var(--shade);
-  --r: 10px;
-  --r-sm: 8px;
-  --h: 26px;
+  --hue: 250;
+  --accent-l: 15;
+  --accent-c: 0.006;
+  --ink: light-dark(oklch(14.5% 0.004 250), oklch(96% 0.004 250));
+  --muted: light-dark(oklch(48% 0.008 250), oklch(70% 0.008 250));
+  --bg: light-dark(oklch(98.2% 0.002 250), oklch(0% 0 0));
+  --surface: light-dark(oklch(100% 0 0), oklch(12.5% 0.004 250));
+  --edge: light-dark(oklch(91.5% 0.004 250), oklch(27% 0.005 250));
+  --accent: light-dark(oklch(15% 0.006 250), oklch(98% 0.004 250));
+  --accent-soft: light-dark(oklch(91% 0.004 250), oklch(22% 0.006 250));
+  --on-accent: light-dark(oklch(99% 0 0), oklch(9% 0 0));
+  --danger: 25;
+  --debit: 55;
+  --edit: 85;
+  --credit: 155;
+  --out: 250;
+  --shadow: 0 1px 2px light-dark(oklch(0% 0 0 / 5%), oklch(0% 0 0 / 40%));
+  --r: 8px;
+  --r-sm: 6px;
+  --h: 32px;
   color-scheme: light dark;
+  accent-color: var(--accent);
   font:
-    14px / 1.6 Vazirmatn,
+    15px / 1.55 Vazirmatn,
     Vazir,
     system-ui,
     sans-serif;
   color: var(--ink);
   background: var(--bg);
+  transition: --hue 0.35s;
 }
 
-[data-palette="blue"] {
-  --hue: var(--blue);
+:is(:root, .swatches button):is(
+  [data-palette="slate"],
+  [data-palette="sand"],
+  [data-palette="blue"],
+  [data-palette="sea"],
+  [data-palette="green"],
+  [data-palette="plum"]
+) {
+  --accent: oklch(calc(var(--accent-l) * 1%) var(--accent-c) var(--hue));
+  --accent-soft: light-dark(oklch(96% 0.014 var(--hue)), oklch(22% 0.02 var(--hue)));
+  --on-accent: oklch(99% 0.004 var(--hue));
 }
-[data-palette="sea"] {
-  --hue: var(--sea);
+:is(:root, .swatches button)[data-palette="ink"] {
+  --hue: 250;
+  --accent-l: 15;
+  --accent-c: 0.006;
+  --accent: light-dark(oklch(15% 0.006 250), oklch(98% 0.004 250));
+  --accent-soft: light-dark(oklch(91% 0.004 250), oklch(22% 0.006 250));
+  --on-accent: light-dark(oklch(99% 0 0), oklch(9% 0 0));
 }
-[data-palette="green"] {
-  --hue: var(--green);
+:is(:root, .swatches button)[data-palette="slate"] {
+  --hue: 252;
+  --accent-l: 42;
+  --accent-c: 0.055;
 }
-[data-palette="plum"] {
-  --hue: var(--plum);
+:is(:root, .swatches button)[data-palette="sand"] {
+  --hue: 78;
+  --accent-l: 46;
+  --accent-c: 0.04;
+}
+:is(:root, .swatches button)[data-palette="blue"] {
+  --hue: 255;
+  --accent-l: 48;
+  --accent-c: 0.12;
+}
+:is(:root, .swatches button)[data-palette="sea"] {
+  --hue: 200;
+  --accent-l: 46;
+  --accent-c: 0.07;
+}
+:is(:root, .swatches button)[data-palette="green"] {
+  --hue: 158;
+  --accent-l: 44;
+  --accent-c: 0.09;
+}
+:is(:root, .swatches button)[data-palette="plum"] {
+  --hue: 305;
+  --accent-l: 48;
+  --accent-c: 0.09;
 }
 
 [data-theme="light"] {
@@ -62,6 +92,27 @@
 }
 [data-theme="dark"] {
   color-scheme: dark;
+}
+
+:is([data-tone="del"], [data-tone="cancel"]) {
+  --tone: var(--danger);
+}
+:is([data-tone="debit"], [data-tone="restore"]) {
+  --tone: var(--debit);
+}
+[data-tone="edit"] {
+  --tone: var(--edit);
+}
+[data-tone="credit"] {
+  --tone: var(--credit);
+}
+[data-tone="out"] {
+  --tone: var(--out);
+}
+[data-tone] {
+  --tone-soft: light-dark(oklch(96% 0.022 var(--tone)), oklch(24% 0.03 var(--tone)));
+  --tone-ink: light-dark(oklch(40% 0.07 var(--tone)), oklch(84% 0.05 var(--tone)));
+  --tone-solid: oklch(48% 0.1 var(--tone));
 }
 
 * {
@@ -72,9 +123,15 @@
 body {
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 12px;
+  gap: 14px;
   height: 100dvh;
-  padding: 12px;
+  padding: 14px;
+  background: var(--bg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 input,
@@ -83,20 +140,18 @@ button,
 .btn {
   font: inherit;
   color: inherit;
-  border: 0;
+  border: 1px solid var(--edge);
   border-radius: var(--r-sm);
   background: var(--surface);
-  box-shadow: 0 1px 2px var(--shade);
 }
 :is(input, select) {
   height: var(--h);
   padding-inline: 10px;
   min-width: 0;
   background: var(--bg);
-  box-shadow: none;
   &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: -1px;
+    border-color: var(--accent);
+    outline-offset: 1px;
   }
 }
 :is(button, .btn):disabled {
@@ -117,65 +172,64 @@ button,
   place-items: center;
   height: var(--h);
   padding-inline: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  transition: background 0.15s;
-  &:hover {
-    background: var(--bg);
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    scale 0.15s;
+  &:active:not(:disabled) {
+    scale: 0.97;
   }
-  &[data-tone] {
-    --c: 0.028;
-    --c-dark: 0.04;
-    --tone: var(--hue);
-    background: light-dark(
-      oklch(96.2% var(--c) var(--tone)),
-      oklch(27.5% var(--c-dark) var(--tone))
-    );
-    &:hover {
-      background: light-dark(
-        oklch(93% calc(var(--c) * 1.3) var(--tone)),
-        oklch(32% calc(var(--c-dark) * 1.2) var(--tone))
-      );
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background: var(--bg);
     }
   }
   &.primary {
-    --c: 0.05;
-    --c-dark: 0.065;
-  }
-  &[data-tone="records"] {
-    --tone: calc(var(--hue) - 18);
-  }
-  &[data-tone="edit"] {
-    --tone: calc(var(--hue) + 40);
-  }
-  &[data-tone="out"] {
-    --tone: calc(var(--hue) - 40);
-  }
-  &[data-tone="settings"] {
-    --tone: calc(var(--hue) + 70);
-  }
-  &[data-tone="del"] {
-    --tone: 25;
-    --c: 0.045;
-    --c-dark: 0.06;
-  }
-  &[data-tone="restore"] {
-    --tone: 55;
-  }
-  &[data-tone="cancel"] {
-    --tone: 70;
-    --c: 0.012;
-    --c-dark: 0.018;
-    &[aria-pressed="true"] {
-      --c: 0.04;
-      --c-dark: 0.055;
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: var(--accent);
+    font-weight: 700;
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        background: color-mix(in oklab, var(--accent), black 12%);
+        border-color: color-mix(in oklab, var(--accent), black 12%);
+      }
     }
   }
-  &[data-tone="close"] {
-    --c: 0.008;
-    --c-dark: 0.012;
+  &[data-tone] {
+    background: var(--tone-soft);
+    color: var(--tone-ink);
+    border-color: color-mix(in oklch, var(--tone-solid) 45%, transparent);
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        border-color: var(--tone-solid);
+      }
+    }
+  }
+  &:is([data-tone="del"], [data-tone="cancel"]:not([aria-pressed="true"])) {
+    background: transparent;
+    border-color: transparent;
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        background: var(--tone-soft);
+        border-color: var(--tone-solid);
+      }
+    }
+  }
+  &[data-tone="cancel"][aria-pressed="true"] {
+    background: var(--tone-solid);
+    color: var(--on-accent);
+    border-color: var(--tone-solid);
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        background: color-mix(in oklab, var(--tone-solid), black 12%);
+      }
+    }
   }
 }
 
@@ -192,39 +246,63 @@ button,
 
 #bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  & > a:not(.btn) {
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  & :is(nav, menu) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+  }
+  & nav > span {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--edge);
+    border-radius: var(--r);
+    background: var(--bg);
+  }
+  & nav .btn {
+    border-color: transparent;
+    background: transparent;
+    color: var(--muted);
+    @media (hover: hover) {
+      &:hover:not([aria-current="page"]) {
+        background: var(--surface);
+        color: var(--ink);
+      }
+    }
+  }
+  & menu :is(button, .btn):not(.primary) {
+    background: var(--bg);
+  }
+  & nav > a:not(.btn) {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-inline-end: auto;
     text-decoration: none;
-    & img { width: 28px }
+    & img { width: 34px }
     & b {
-      font-size: 1.15em;
-      font-weight: 700;
-      background: linear-gradient(
-        105deg,
-        oklch(58% 0.25 calc(var(--hue) + var(--mark))),
-        oklch(74% 0.18 calc(var(--hue) + var(--mark) + 48)) 42%,
-        oklch(64% 0.27 calc(var(--hue) + var(--mark) + 110))
-      );
-      background-clip: text;
-      color: transparent;
-      animation: mark 7s linear infinite;
-    }
-    &:focus { outline: none }
-    &:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 4px;
-      border-radius: var(--r-sm);
+      font-size: 1.05em;
+      font-weight: 600;
+      color: var(--ink);
     }
   }
   & a[aria-current="page"] {
-    background: var(--accent-soft);
-    color: var(--accent);
-    box-shadow: none;
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: transparent;
   }
   & [data-act="theme"] {
     width: var(--h);
@@ -246,10 +324,6 @@ button,
       }
     }
   }
-}
-
-@keyframes mark {
-  to { --mark: 360 }
 }
 
 [data-theme="light"] #bar [data-act="theme"] {
@@ -282,6 +356,7 @@ main {
   min-height: 0;
   overflow: hidden;
   background: var(--surface);
+  border: 1px solid var(--edge);
   border-radius: var(--r);
   box-shadow: var(--shadow);
 }
@@ -311,10 +386,10 @@ main {
     }
     &:has([aria-current]) {
       background: var(--accent-soft);
-      box-shadow: inset 3px 0 var(--accent);
+      box-shadow: inset 2px 0 var(--accent);
     }
     &:dir(rtl):has([aria-current]) {
-      box-shadow: inset -3px 0 var(--accent);
+      box-shadow: inset -2px 0 var(--accent);
     }
   }
   & > label {
@@ -324,23 +399,23 @@ main {
   }
   & fieldset {
     display: flex;
+    gap: 2px;
     padding: 2px;
-    border: 0;
-    border-radius: var(--r-sm);
+    border: 1px solid var(--edge);
+    border-radius: var(--r);
     background: var(--bg);
     & label {
       flex: 1;
       text-align: center;
-      line-height: 26px;
-      border-radius: 4px;
+      line-height: 28px;
+      border-radius: var(--r-sm);
       cursor: pointer;
       color: var(--muted);
     }
     & label:has(:checked) {
-      background: var(--surface);
+      background: var(--accent-soft);
       color: var(--ink);
-      font-weight: 600;
-      box-shadow: 0 1px 2px var(--shade);
+      font-weight: 700;
     }
     & label:has(:focus-visible) {
       outline: 2px solid var(--accent);
@@ -348,6 +423,7 @@ main {
     & input {
       position: absolute;
       opacity: 0;
+      &:focus-visible { outline: none }
     }
   }
 }
@@ -360,12 +436,14 @@ main {
     gap: 4px;
     padding-inline-end: 6px;
     border-radius: var(--r-sm);
-    &:hover {
-      background: var(--bg);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--bg);
+      }
     }
     &:has([aria-current]) {
       background: var(--accent-soft);
-      box-shadow: inset 3px 0 var(--accent);
+      box-shadow: inset 2px 0 var(--accent);
     }
     & button {
       height: 26px;
@@ -393,7 +471,7 @@ main {
 }
 
 :dir(rtl) :where(#list, .cards) .item:has([aria-current]) {
-  box-shadow: inset -3px 0 var(--accent);
+  box-shadow: inset -2px 0 var(--accent);
 }
 
 #list {
@@ -402,13 +480,14 @@ main {
   gap: 2px;
   padding: 8px;
   overflow: auto;
+  scrollbar-color: var(--edge) transparent;
   & .item:has([aria-current]) {
     border-start-start-radius: 0;
     border-end-start-radius: 0;
-    box-shadow: inset 6px 0 var(--accent);
+    box-shadow: inset 2px 0 var(--accent);
   }
   &:dir(rtl) .item:has([aria-current]) {
-    box-shadow: inset -6px 0 var(--accent);
+    box-shadow: inset -2px 0 var(--accent);
   }
   & h3 {
     position: sticky;
@@ -429,8 +508,8 @@ main {
   &::after {
     content: "";
     position: absolute;
-    inset: 45% 6px;
-    border-radius: 1px;
+    inset: 42% 4px;
+    border-radius: 999px;
     background: var(--edge);
   }
   &:is(:hover, :focus-visible, :active)::after {
@@ -439,14 +518,21 @@ main {
   }
 }
 
+@media (max-width: 680px) {
+  body { height: auto; min-height: 100dvh }
+  main { grid-template-columns: 1fr }
+  #split { display: none }
+  #history { max-height: 52dvh }
+}
+
 #record {
   overflow: auto;
   min-height: 0;
+  scrollbar-color: var(--edge) transparent;
   & > h2 {
-    padding: 8px 4px 12px;
-    font-size: 1em;
-    font-weight: 600;
-    color: var(--muted);
+    padding: 4px 6px 12px;
+    font-size: 1.15em;
+    font-weight: 800;
   }
   & .cut {
     width: 6rem;
@@ -463,17 +549,20 @@ main {
   gap: 12px;
   & .item {
     background: var(--surface);
+    border: 1px solid var(--edge);
     border-radius: var(--r);
     padding-inline-end: 10px;
     box-shadow: var(--shadow);
-    &:hover {
-      box-shadow: 0 4px 16px var(--shade);
+    @media (hover: hover) {
+      &:hover {
+        border-color: var(--accent);
+      }
     }
     &:has([aria-current]) {
-      box-shadow: var(--shadow), inset 3px 0 var(--accent);
+      box-shadow: var(--shadow), inset 2px 0 var(--accent);
     }
     &:dir(rtl):has([aria-current]) {
-      box-shadow: var(--shadow), inset -3px 0 var(--accent);
+      box-shadow: var(--shadow), inset -2px 0 var(--accent);
     }
   }
   & a {
@@ -482,9 +571,12 @@ main {
 }
 
 .hint {
-  padding: 32px;
+  margin: 8px;
+  padding: 28px;
   text-align: center;
   color: var(--muted);
+  border: 1px dashed var(--edge);
+  border-radius: var(--r);
 }
 
 dialog {
@@ -493,7 +585,7 @@ dialog {
   padding: 20px;
   color: inherit;
   background: var(--surface);
-  border: 0;
+  border: 1px solid var(--edge);
   border-radius: var(--r);
   box-shadow: var(--shadow);
   opacity: 0;
@@ -512,7 +604,7 @@ dialog {
     }
   }
   &::backdrop {
-    background: oklch(0% 0 0 / 0.3);
+    background: light-dark(oklch(0% 0 0 / 40%), oklch(0% 0 0 / 64%));
   }
   & form {
     display: grid;
@@ -551,31 +643,19 @@ dialog {
   }
   & .swatches {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     & button {
-      --chip: var(--blue);
-      &[data-palette="sea"] {
-        --chip: var(--sea);
-      }
-      &[data-palette="green"] {
-        --chip: var(--green);
-      }
-      &[data-palette="plum"] {
-        --chip: var(--plum);
-      }
-      width: var(--h);
+      width: 28px;
+      height: 28px;
       padding: 0;
+      border: 1px solid color-mix(in oklch, var(--ink) 16%, transparent);
       border-radius: 50%;
-      box-shadow: 0 1px 3px var(--shade);
-      background: light-dark(
-        oklch(58% 0.24 var(--chip)),
-        oklch(70% 0.2 var(--chip))
-      );
-      &:hover {
-        background: light-dark(
-          oklch(50% 0.26 var(--chip)),
-          oklch(76% 0.22 var(--chip))
-        );
+      background: var(--accent);
+      @media (hover: hover) {
+        &:hover {
+          background: color-mix(in oklab, var(--accent), black 14%);
+        }
       }
       &[aria-pressed="true"] {
         outline: 2px solid var(--ink);

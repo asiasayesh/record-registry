@@ -1,6 +1,6 @@
 .doc {
-  display: grid; gap: 16px; max-width: 60rem; margin-inline: auto; padding: 28px;
-  background: var(--surface); border: 0; border-radius: var(--r); box-shadow: var(--shadow);
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; width: 100%; max-width: 60rem; margin-inline: auto; padding: 28px;
+  background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r); box-shadow: var(--shadow);
   & > header {
     display: grid; grid-template-columns: 1fr auto; grid-template-areas: "brand logo" "meta meta";
     align-items: start; gap: 16px 24px; padding-block-end: 16px;
@@ -14,29 +14,78 @@
     & input { width: 8rem }
   }
   & .party {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 0; border: 0;
-    & :is(select, input) { flex: 1 }
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 12px; border: 0; border-radius: var(--r-sm); background: var(--bg);
+    & select[name=kind] { flex: 0 0 auto; width: auto; min-width: 8.5rem }
+    & :is(select[name=entity], input) { flex: 1; min-width: 8rem }
+    & select[name=entity] { min-width: 14rem }
+    &:has([value=other]:checked) select[name=entity] { display: none }
     &:not(:has([value=other]:checked)) input { display: none }
   }
   &:has(.party [value=other]:checked) .due:has([name=prior], [name=debt]) { display: none }
-  & input:user-invalid { background: light-dark(oklch(96% .04 25), oklch(28% .08 25)) }
-  & table { width: 100%; border-spacing: 0; border: 0; border-radius: var(--r-sm); overflow: hidden; counter-reset: row }
-  & .pays td:nth-child(3) { white-space: nowrap }
+  & :is(td, .party) :is(input, select):is(:user-invalid, [aria-invalid=true]) { border-color: light-dark(oklch(55% .24 25), oklch(70% .2 25)); background: light-dark(oklch(96% .04 25), oklch(28% .08 25)) }
+  & table { width: 100%; border-spacing: 0; border: 0; border-radius: var(--r-sm); overflow: hidden }
+  & tbody { counter-reset: row }
+  & select {
+    min-width: 7.5rem; padding-inline: 12px 2.2rem;
+    &, &::picker(select) { appearance: base-select }
+    &::picker(select) { border: 1px solid var(--edge); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); padding: 4px; box-shadow: var(--shadow) }
+    &::picker-icon { color: var(--muted) }
+    & option {
+      padding: 8px 12px; border-radius: 8px;
+      &:is(:hover, :focus) { background: var(--bg) }
+      &:checked { background: var(--accent-soft); font-weight: 700 }
+    }
+  }
   & caption { padding-block-end: 6px; text-align: start; font-weight: 600; color: var(--muted) }
   & th { padding: 6px 8px; text-align: start; white-space: nowrap; font-size: .85em; font-weight: 600; color: var(--muted); background: var(--bg) }
   & td { padding: 6px 8px }
   & tbody tr:nth-child(even) { background: var(--bg) }
   & :is(th, td):nth-child(n+4) { text-align: end; font-variant-numeric: tabular-nums }
   & :is(th, td):nth-child(2) { width: 40% }
-  & tbody tr { counter-increment: row; & td:first-child { width: 3em; color: var(--muted); &::before { content: counter(row) } } }
-  & td:has(input:not([type=hidden]), select) { padding: 4px; & :is(input, select) { width: 100% } }
-  & td button { width: var(--h); padding: 0 }
-  & .items tbody tr:only-child td button { visibility: hidden }
-  & .add {
-    width: 100%; margin-block-start: 8px; box-shadow: none; background: var(--bg);
-    & svg { width: 18px; height: 18px }
+  & :is(table, .add)[data-tone] {
+    --tone-soft: light-dark(oklch(97.4% 0.01 var(--tone)), oklch(16% 0.012 var(--tone)));
+    --tone-ink: light-dark(oklch(44% 0.025 var(--tone)), oklch(76% 0.02 var(--tone)));
+    --tone-solid: light-dark(oklch(82% 0.016 var(--tone)), oklch(34% 0.018 var(--tone)));
   }
-  & footer { display: grid; gap: 6px; & p { display: flex; justify-content: space-between; gap: 12px } & p:first-child { font-weight: 700; font-size: 1.1em } }
+  & table[data-tone] {
+    border-start-start-radius: 0; border-end-start-radius: 0;
+    & :is(th, caption) { color: var(--tone-ink) }
+    & th { background: var(--tone-soft) }
+    & tbody tr:nth-child(even) { background: color-mix(in oklab, var(--tone-soft) 35%, transparent) }
+  }
+  & .pays td:nth-child(4) {
+    white-space: nowrap; text-align: end;
+    &::before { content: "+"; margin-inline-end: 4px; color: var(--tone-ink); font-weight: 800 }
+    & input { width: calc(100% - 1.2rem) }
+  }
+  & tbody tr:has(> td:first-child:empty) { counter-increment: row }
+  & tbody td:first-child:empty { width: 3em; color: var(--muted); &::before { content: counter(row) } }
+  & .entities td:first-child:not(:empty) { width: 3.4em; color: var(--muted); font-variant-numeric: tabular-nums }
+  & .entities td:nth-child(3) { width: 9rem }
+  & td:has(input:not([type=hidden]), select) {
+    padding: 4px;
+    & :is(input, select) { width: 100%; border-color: transparent; background: transparent; &:focus-visible { border-color: var(--accent); background: var(--bg) } }
+    & input[name=total] { pointer-events: none; &:focus-visible { border-color: transparent; background: transparent; outline: none } }
+  }
+  & td.tools {
+    width: 1%; padding-inline: 2px; white-space: nowrap; text-align: end;
+    & button + button { margin-inline-start: 2px }
+  }
+  & td button { width: var(--h); padding: 0; border-radius: 50% }
+  & [data-act=done] { background: transparent; border-color: transparent; color: var(--muted) }
+  & [data-act=done][aria-pressed=true] { background: var(--tone-solid); color: var(--on-accent); border-color: var(--tone-solid) }
+  & tr:has([data-act=done][aria-pressed=true]) td { background: color-mix(in oklab, var(--accent) 16%, transparent) }
+  & .add {
+    width: 100%; margin-block-start: 8px; border-style: dashed; background: var(--bg);
+    & svg { width: 18px; height: 18px }
+    &[data-tone] { background: var(--tone-soft); color: var(--tone-ink); border-color: var(--tone-solid) }
+  }
+  & footer {
+    display: grid; gap: 6px;
+    & p { display: flex; justify-content: space-between; gap: 12px }
+    & p:first-child { font-weight: 700; font-size: 1.1em }
+    & output[data-tone] { color: var(--tone-ink) }
+  }
   & .due {
     color: var(--muted); font-variant-numeric: tabular-nums;
     &:not(.due + .due) { padding-block-start: 8px }
@@ -44,7 +93,19 @@
     & output:not([name=paid])[data-owe=true] { color: light-dark(oklch(55% .24 25), oklch(70% .2 25)); font-weight: 800 }
     &:last-of-type { font-size: 1.05em }
   }
-  & .acts { display: flex; justify-content: end; gap: 8px; margin-block-start: 8px }
+  & .pays {
+    table-layout: fixed; margin-block-start: 18px; border-block-start: 2px solid var(--tone-solid);
+    & caption { padding-block-start: 12px }
+    & :is(th, td):nth-child(1) { width: 2.6rem }
+    & :is(th, td):nth-child(2) { width: auto; min-width: 10rem }
+    & :is(th, td):nth-child(3) { width: 8rem; max-width: 8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+    & :is(th, td):nth-child(4) { width: 5rem }
+    & :is(th, td):last-child { width: 4.5rem }
+  }
+  & .acts {
+    display: flex; justify-content: end; gap: 8px; margin-block-start: 8px;
+    & a[data-tone=cancel] { order: -1; margin-inline-end: auto }
+  }
 }
 
-:lang(fa) .doc tbody td:first-child::before { content: counter(row, persian) }
+:lang(fa) .doc tbody td:first-child:empty::before { content: counter(row, persian) }
