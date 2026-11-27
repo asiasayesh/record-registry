@@ -21,10 +21,10 @@
     & select[name=kind] { flex: 0 0 auto; width: auto; min-width: 8.5rem }
     & :is(select[name=entity], input) { flex: 1; min-width: 8rem }
     & select[name=entity] { min-width: 14rem }
-    &:has([value=other]:checked) select[name=entity] { display: none }
-    &:not(:has([value=other]:checked)) input { display: none }
+    &:not(:has([value=other]:checked)) input,
+    &:has(select[name=entity] :checked:not([value=""])) input { display: none }
   }
-  &:has(.party [value=other]:checked) .due:has([name=prior], [name=debt]) { display: none }
+  &:has(.party select[name=kind] :checked[value=other]):has(.party select[name=entity] :checked[value=""]) .due:has([name=prior], [name=debt]) { display: none }
   & :is(td, .party) :is(input, select):is(:user-invalid, [aria-invalid=true]) { border-color: light-dark(oklch(55% .24 25), oklch(70% .2 25)); background: light-dark(oklch(96% .04 25), oklch(28% .08 25)) }
   & table { width: 100%; border-spacing: 0; border: 0; border-radius: var(--r-sm); overflow: hidden }
   & tbody { counter-reset: row }

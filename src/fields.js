@@ -9,7 +9,7 @@ export const fields = {
   note: text,
   amount: num,
   party: text,
-  kind: { required: true, options: ['person', 'company'] },
+  kind: { required: true, options: ['person', 'company', 'other'] },
   debt: { type: 'number', min: 0, required: true },
   stamp: { type: 'number' },
   ref: { type: 'number' },

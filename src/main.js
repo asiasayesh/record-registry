@@ -3,17 +3,30 @@ import '@/doc.css'
 import '@/print.css'
 import { t, setLang, lang, ascii, toNum, num } from '@/i18n.js'
 import { fields, fit } from '@/fields.js'
-import { h, history, record, lines, paper, balance, owed, opts } from '@/view.js'
+import { h, history, record, screen, lines, paper, balance, owed, opts } from '@/view.js'
 import * as db from '@/store.js'
 
 const $ = s => document.querySelector(s)
 
-const regions = { list: history, record }
+const regions = { list: history, record, screen }
 const cache = {}
+const origin = {}
+const live = form => JSON.stringify([...form.querySelectorAll('input, select')].map(i => i.type === 'radio' ? `${i.name}:${i.value}:${i.checked}` : `${i.name}=${i.value}`))
+const dirty = form => form?.querySelector('button.primary')?.toggleAttribute('data-dirty', live(form) !== origin[form.id]?.json)
+const pin = (form, key = form.id === 'editor' ? `e:${form.serial.value}:${form.fresh.value}` : 'entities') => (
+  (form.id === 'entities' || origin[form.id]?.key !== key) && (origin[form.id] = { key, json: live(form) }),
+  dirty(form)
+)
+const mount = (id, html) => {
+  const el = $(`#${id}`)
+  const form = (el.innerHTML = cache[id] = html, el.querySelector('#editor, #entities'))
+  id === 'screen' && (el.ariaLabel = state.edit?.fresh ? t.new : t.edit, html ? el.open || (el.showModal(), el.querySelector('[name=kind]')?.focus()) : (origin.editor = null, el.close()))
+  form && pin(form)
+}
 const paint = () => Object.entries(regions)
   .map(([id, view]) => [id, view(state)])
   .filter(([id, html]) => cache[id] !== html)
-  .map(([id, html]) => $(`#${id}`).innerHTML = cache[id] = html)
+  .map(([id, html]) => mount(id, html))
 
 const schedule = () => schedule.id ||= requestAnimationFrame(() => (schedule.id = 0, paint()))
 const ticket = { n: 0 }
@@ -30,9 +43,9 @@ const blank = id => ({ id, fresh: true, entity_id: null, side: 'sale', at: Date.
 const routes = {
   '': async () => ({ cur: null, edit: null, span: null }),
   entities: async () => (await reload(), { cur: null, edit: null, span: null }),
-  new: async () => ({ cur: null, edit: blank(await db.next()), span: null }),
+  new: async () => ({ edit: blank(await db.next()), span: null }),
   span: async () => (await show(), { cur: null, edit: null }),
-  edit: async id => db.get(id).then(r => r?.cancelled ? { cur: r, edit: null, span: null } : { cur: null, edit: r, span: null }),
+  edit: async id => db.get(id).then(r => ({ cur: r ?? null, edit: r && !r.cancelled ? r : null, span: null })),
   view: async id => (await db.touch(id), { cur: await db.get(id), edit: null, span: null, list: await db.list() }),
 }
 
@@ -87,14 +100,14 @@ const restore = async (file, mode) => file && confirm(t[`${mode}Ask`]) && (
 const tune = (form, kind = form.kind.value, side = sideOf(form), e = ent(toNum(form.entity.value)), id = fit(e, kind, side) ? form.entity.value : '') => (
   form.entity.innerHTML = opts([['', t.pick], ...state.entities.filter(x => fit(x, kind, side)).map(x => [x.id, x.name])], id),
   form.entity.required = !!kind && kind !== 'other',
-  form.party.required = kind === 'other',
+  form.party.required = kind === 'other' && !toNum(form.entity.value),
   form.entity.ariaInvalid = form.party.ariaInvalid = 'false'
 )
 
 const inputs = {
   filters: ({ target }) => (state.filter = Object.fromEntries(new FormData(target.form)), target.name === 'days' && show()),
   editor: ({ target }) => (
-    (target.name === 'kind' || target.name === 'side') && tune(target.form),
+    (['kind', 'side', 'entity'].includes(target.name)) && tune(target.form),
     target.name === 'side'
       ? state.edit = read(target.form)
       : (['qty', 'unit'].includes(target.name) && auto(target.closest('tr')), recalc(target.form))
@@ -106,9 +119,10 @@ const inputs = {
 const acts = {
   row: ({ form, dataset: { of } }, body = form.querySelector(`.${of} tbody`)) => (
     body.insertAdjacentHTML('beforeend', lines[of]()),
-    body.lastElementChild.querySelector('input:not([type=hidden])').focus()
+    body.lastElementChild.querySelector('input:not([type=hidden])').focus(),
+    dirty(form)
   ),
-  del: (el, form = el.form) => (el.closest('tr').remove(), form.id === 'editor' && recalc(form)),
+  del: (el, form = el.form) => (el.closest('tr').remove(), form.id === 'editor' && recalc(form), dirty(form)),
   print: async ({ dataset: { id } }) => (sheet(id ? await db.get(+id) : state.cur ?? draft()), print()),
   cancel: async ({ dataset: { id } }) => (await db.cancel(+id), await route()),
   backup: async () => download(await db.dump(), `tx-ledger-${new Date().toLocaleDateString('sv')}.sqlite3`),
@@ -146,7 +160,8 @@ const submits = {
 }
 
 addEventListener('beforeinput', e => e.target.type === 'number' && /[۰-۹٠-٩٫,]/.test(e.data ?? '') && (e.preventDefault(), e.target.value = ascii(e.target.value + e.data).replace(/[,٬]/g, '').replace('٫', '.'), e.target.dispatchEvent(new Event('input', { bubbles: true }))))
-addEventListener('input', e => (relax(e.target), inputs[e.target.form?.id]?.(e)))
+addEventListener('input', e => (relax(e.target), inputs[e.target.form?.id]?.(e), e.target.name === 'role' || dirty(e.target.form)))
+$('#screen').onclose = () => state.edit && (location.hash = state.edit.fresh ? '#/' : `#/${state.edit.id}`)
 addEventListener('invalid', e => e.target.ariaInvalid = 'true', true)
 const act = el => acts[el?.dataset.act]?.(el)
 addEventListener('click', e => act(e.target.closest('[data-act]')))

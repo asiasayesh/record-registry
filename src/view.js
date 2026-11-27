@@ -99,7 +99,7 @@ const ent = (e = {}, list = [], n = list.filter(r => r.entity_id === e.id).lengt
 
 export const lines = { items: row, pays: pay, entities: ent }
 
-const party = (r, entities, kind = r.kind ?? '', side = sideOf(r)) => `<fieldset class="party"><select name="kind" ${req} aria-label="${t.kind}">${opts([['', t.kind], ...fields.kind.options.map(k => [k, t[k]]), ['other', t.other]], kind)}</select><select name="entity" aria-invalid="false" aria-label="${ts(side, 'party')}"${kind && kind !== 'other' ? ' required' : ''}>${opts([['', t.pick], ...entities.filter(e => fit(e, kind, side)).map(e => [e.id, e.name])], r.entity_id ?? '')}</select>${input('party', r.entity_id ? '' : r.party, `placeholder="${ts(side, 'partyName')}" aria-invalid="false"${kind === 'other' ? ' required' : ''}`)}</fieldset>`
+const party = (r, entities, kind = r.kind ?? '', side = sideOf(r)) => `<fieldset class="party"><select name="kind" ${req} aria-label="${t.kind}">${opts([['', t.kind], ...fields.kind.options.map(k => [k, t[k]])], kind)}</select><select name="entity" aria-invalid="false" aria-label="${ts(side, 'party')}"${kind && kind !== 'other' ? ' required' : ''}>${opts([['', t.pick], ...entities.filter(e => fit(e, kind, side)).map(e => [e.id, e.name])], r.entity_id ?? '')}</select>${input('party', r.entity_id ? '' : r.party, `placeholder="${ts(side, 'partyName')}" aria-invalid="false"${kind === 'other' && !r.entity_id ? ' required' : ''}`)}</fieldset>`
 
 const editor = (r, list, entities, side = sideOf(r), sum = tally(r.items), paid = tally(r.payments, 'amount'), base = r.base ?? entities.find(e => e.id === r.entity_id)?.debt ?? 0) => `
   <form id="editor" class="doc" novalidate>
@@ -134,5 +134,7 @@ const empty = (list, top = recent(list)) => top.length
   : `<p class="hint">${t.empty}</p>`
 const stack = rows => rows.map(r => paper(r)).join('<hr class="cut">') || `<p class="hint">${t.none}</p>`
 
-export const record = ({ cur, edit, list, span, roster, entities, rosterRole = 'buyer' }) =>
-  roster ? team(entities, list, rosterRole) : edit ? editor(edit, list, entities) : cur ? doc(cur, list) : span ? stack(span) : empty(list)
+export const record = ({ cur, list, span, roster, entities, rosterRole = 'buyer' }) =>
+  roster ? team(entities, list, rosterRole) : cur ? doc(cur, list) : span ? stack(span) : empty(list)
+
+export const screen = ({ edit, list, entities }) => edit ? editor(edit, list, entities) : ''
