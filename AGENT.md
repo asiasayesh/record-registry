@@ -1,6 +1,6 @@
-# Record Registry
+# tx-ledger
 
-It is a record registry dashboard
+It is a sale and purchase ledger
 left side would be the history along with some filters
 the middle a 14px split resizer for drag resize
 the right side would be the actual opened record

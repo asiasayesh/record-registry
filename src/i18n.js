@@ -28,7 +28,7 @@ const dict = {
   },
   en: {
     dir: 'ltr', locale: 'en-GB', digits: '0123456789', next: 'fa',
-    title: 'Record Registry', lang: 'فا', new: 'New record',
+    title: 'Tx Ledger', lang: 'فا', new: 'New record',
     settings: 'Settings', appearance: 'Appearance', language: 'Language', theme: 'Theme', light: 'Light', dark: 'Dark',
     palette: 'Color', ink: 'Ink', slate: 'Slate', sand: 'Sand', blue: 'Blue', sea: 'Sea', green: 'Green', plum: 'Violet',
     data: 'Data', backup: 'Backup', merge: 'Add records', replace: 'Replace', close: 'Close',

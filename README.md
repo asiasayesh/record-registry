@@ -1,7 +1,7 @@
-# Record Registruy
+# tx-ledger
 
 ## Overview
 
-This is a record registry for the record of the record.
+Sale and purchase ledger. Documents, parties, payments, running debt.
 
 read [AGENT.md](AGENT.md) for more details.

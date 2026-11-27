@@ -111,7 +111,7 @@ const acts = {
   del: (el, form = el.form) => (el.closest('tr').remove(), form.id === 'editor' && recalc(form)),
   print: async ({ dataset: { id } }) => (sheet(id ? await db.get(+id) : state.cur ?? draft()), print()),
   cancel: async ({ dataset: { id } }) => (await db.cancel(+id), await route()),
-  backup: async () => download(await db.dump(), `registry-${new Date().toLocaleDateString('sv')}.sqlite3`),
+  backup: async () => download(await db.dump(), `tx-ledger-${new Date().toLocaleDateString('sv')}.sqlite3`),
   lang: () => (state.edit && (state.edit = read($('#editor'))), setLang(t.next), paint()),
   theme: () => setTheme(tone() === 'dark' ? 'light' : 'dark'),
   palette: ({ dataset: { palette } }) => setPalette(palette),
