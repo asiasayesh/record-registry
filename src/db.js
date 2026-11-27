@@ -20,6 +20,8 @@ const migrations = [
     ALTER TABLE records DROP COLUMN kind;`],
   ['records', 'party', 'ALTER TABLE records ADD COLUMN party TEXT'],
   ['entities', 'debt', 'ALTER TABLE entities ADD COLUMN debt REAL DEFAULT 0'],
+  ['records', 'side', `ALTER TABLE records ADD COLUMN side TEXT DEFAULT 'sale'`],
+  ['entities', 'role', `ALTER TABLE entities ADD COLUMN role TEXT DEFAULT 'buyer'`],
 ]
 
 const rows = (db, sql, bind) => db.exec({ sql, bind: bind?.length ? bind : undefined, rowMode: 'object', returnValue: 'resultRows' })

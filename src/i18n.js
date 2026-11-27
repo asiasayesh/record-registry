@@ -10,10 +10,17 @@ const dict = {
     print: 'چاپ', edit: 'ویرایش', save: 'ذخیره', cancel: 'انصراف', cancelled: 'باطل', del: 'حذف ردیف', need: 'الزامی',
     search: 'جستجو در نام، نوع و شرح', last: 'آخرین', days: 'روز', from: 'از', to: 'تا', byDate: 'تاریخ', byDesc: 'شرح', resize: 'تغییر عرض',
     serial: 'شماره', date: 'تاریخ', party: 'صورتحساب', pick: 'انتخاب طرف حساب', partyName: 'نام خریدار',
-    person: 'شخص', company: 'شرکت', other: 'متفرقه', phone: 'تلفن', fax: 'فکس', mobile: 'همراه',
+    person: 'شخص', company: 'شرکت', other: 'متفرقه', buyer: 'خریدار', seller: 'فروشنده',
+    all: 'همه', sale: 'فروش', buy: 'خرید', phone: 'تلفن', fax: 'فکس', mobile: 'همراه',
+    mismatch: 'طرف حساب با نوع سند نمی‌خواند',
     entities: 'طرف حساب‌ها', name: 'نام', kind: 'نوع', records: 'اسناد', addEntity: 'طرف حساب جدید',
     payments: 'دریافت‌ها', note: 'توضیح', amount: 'مبلغ', addPay: 'دریافت جدید',
-    items: 'اقلام خریداری‌شده',
+    items: 'اقلام فروخته‌شده',
+    copy: { buy: {
+      items: 'اقلام خریداری‌شده', description: 'کالا', unit: 'بهای واحد', total: 'بهای کل',
+      payments: 'پرداخت‌ها', addPay: 'پرداخت جدید', paid: 'پرداختی', prior: 'بدهی قبلی ما', debt: 'بدهی ما به فروشنده',
+      party: 'خرید از', partyName: 'نام فروشنده',
+    } },
     paid: 'دریافتی', rest: 'مانده این سند', prior: 'بدهی قبلی', debt: 'بدهی کل طرف حساب',
     row: 'ردیف', description: 'شرح کالا', qty: 'تعداد', unit: 'قیمت واحد', total: 'قیمت کل', addRow: 'ردیف جدید',
     sum: 'جمع کل', words: 'مبلغ کل به حروف', currency: 'ریال',
@@ -30,10 +37,17 @@ const dict = {
     print: 'Print', edit: 'Edit', save: 'Save', cancel: 'Cancel', cancelled: 'Cancelled', del: 'Remove row', need: 'Required',
     search: 'Search name, type, and description', last: 'Last', days: 'days', from: 'From', to: 'To', byDate: 'Date', byDesc: 'Description', resize: 'Resize',
     serial: 'No.', date: 'Date', party: 'Invoice to', pick: 'Choose entity', partyName: 'Buyer name',
-    person: 'Person', company: 'Company', other: 'Other', phone: 'Tel', fax: 'Fax', mobile: 'Mobile',
+    person: 'Person', company: 'Company', other: 'Other', buyer: 'Buyer', seller: 'Seller',
+    all: 'All', sale: 'Sale', buy: 'Purchase', phone: 'Tel', fax: 'Fax', mobile: 'Mobile',
+    mismatch: 'Entity does not match this record',
     entities: 'Entities', name: 'Name', kind: 'Type', records: 'Records', addEntity: 'Add entity',
     payments: 'Payments', note: 'Note', amount: 'Amount', addPay: 'Add payment',
-    items: 'Purchased items',
+    items: 'Items sold',
+    copy: { buy: {
+      items: 'Purchased items', description: 'Item', unit: 'Unit cost', total: 'Total cost',
+      payments: 'Payments', addPay: 'Add payment', paid: 'Paid', prior: 'Our previous debt', debt: 'We owe the seller',
+      party: 'Purchase from', partyName: 'Seller name',
+    } },
     paid: 'Received', rest: 'Balance due', prior: 'Previous debt', debt: 'Total entity debt',
     row: '#', description: 'Description', qty: 'Qty', unit: 'Unit price', total: 'Total', addRow: 'Add row',
     sum: 'Total', words: 'Total in words', currency: 'IRR',
@@ -44,6 +58,7 @@ const dict = {
 export const lang = () => document.documentElement.lang
 export const t = new Proxy({}, { get: (_, k) => dict[lang()]?.[k] ?? k })
 export const tr = v => v?.[lang()] ?? v
+export const ts = (side, k) => dict[lang()]?.copy?.[side]?.[k] ?? t[k]
 
 export const ascii = s => String(s ?? '').replace(/[۰-۹٠-٩]/g, d => d.charCodeAt() & 15)
 export const toNum = s => parseFloat(ascii(s).replace(/[,٬\s]/g, '').replace('٫', '.')) || 0

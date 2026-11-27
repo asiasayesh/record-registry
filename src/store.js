@@ -1,3 +1,6 @@
+import { roles } from '@/fields.js'
+import { t } from '@/i18n.js'
+
 const worker = new Worker(new URL('./db.js', import.meta.url), { type: 'module' })
 addEventListener('pagehide', () => worker.postMessage({ op: 'pause' }))
 addEventListener('pageshow', e => e.persisted && worker.postMessage({ op: 'resume' }))
@@ -41,19 +44,24 @@ export const get = async id => {
 export const next = () => exec('SELECT coalesce(max(id), 0) + 1 id FROM records').then(([r]) => num(r.id))
 export const touch = id => exec('UPDATE records SET opened = ? WHERE id = ?', Date.now(), id)
 
-export const save = r => call('tx', [
-  ['INSERT INTO records (id, entity_id, party, at) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET entity_id = excluded.entity_id, party = excluded.party', [r.id, r.entity_id, r.entity_id ? null : r.party, r.at]],
+export const save = async r => {
+  const want = roles[r.side || 'sale']
+  const [hit] = r.entity_id ? await exec(`SELECT ifnull(role, 'buyer') role FROM entities WHERE id = ?`, r.entity_id) : []
+  if (hit && hit.role !== want) throw new Error(t.mismatch)
+  return call('tx', [
+  ['INSERT INTO records (id, entity_id, party, at, side) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET entity_id = excluded.entity_id, party = excluded.party, side = excluded.side', [r.id, r.entity_id, r.entity_id ? null : r.party, r.at, r.side || 'sale']],
   ...['items', 'payments'].map(k => [`DELETE FROM ${k} WHERE record_id = ?`, [r.id]]),
   ...r.items.map((it, n) => ['INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)', [r.id, n, it.description, it.qty, it.unit, it.total]]),
   ...r.payments.map((p, n) => ['INSERT INTO payments VALUES (?, ?, ?, ?, ?)', [r.id, n, p.amount, p.stamp, p.note]]),
 ])
+}
 
 export const cancel = id => exec('UPDATE records SET cancelled = NOT ifnull(cancelled, 0) WHERE id = ?', id)
 
 export const entities = () => exec('SELECT * FROM entities ORDER BY name').then(rows => rows.map(e => ({ ...e, id: num(e.id), debt: num(e.debt) })))
-export const sync = rows => call('tx', [
-  ['DELETE FROM entities WHERE id NOT IN (SELECT value FROM json_each(?)) AND id NOT IN (SELECT entity_id FROM records WHERE entity_id NOTNULL)', [JSON.stringify(rows.map(e => e.ref).filter(Boolean))]],
-  ...rows.map(e => ['INSERT INTO entities (id, name, kind, debt) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, kind = excluded.kind, debt = excluded.debt', [e.ref || null, e.party, e.kind, e.debt]]),
+export const sync = (rows, role = 'buyer') => call('tx', [
+  [`DELETE FROM entities WHERE ifnull(role, 'buyer') = ? AND id NOT IN (SELECT value FROM json_each(?)) AND id NOT IN (SELECT entity_id FROM records WHERE entity_id NOTNULL)`, [role, JSON.stringify(rows.map(e => e.ref).filter(Boolean))]],
+  ...rows.map(e => ['INSERT INTO entities (id, name, kind, debt, role) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, kind = excluded.kind, debt = excluded.debt, role = excluded.role', [e.ref || null, e.party, e.kind, e.debt, e.role || role]]),
 ])
 
 export const dump = () => call('dump')

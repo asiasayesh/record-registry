@@ -2,6 +2,7 @@ import '@/style.css'
 import '@/doc.css'
 import '@/print.css'
 import { t, setLang, lang, ascii, toNum, num } from '@/i18n.js'
+import { fields, roles } from '@/fields.js'
 import { h, history, record, lines, paper, balance, owed } from '@/view.js'
 import * as db from '@/store.js'
 
@@ -19,12 +20,12 @@ const ticket = { n: 0 }
 const from = (n, d = new Date()) => d.setDate(d.setHours(0, 0, 0, 0) && d.getDate() - n + 1)
 const docs = days => (mine => Promise.all(+days > 0 ? state.list.filter(r => r.at >= from(+days)).map(r => db.get(r.id)) : []).then(rows => mine === ticket.n && rows.filter(Boolean)))(++ticket.n)
 const show = async () => location.hash === '#/span' && (rows => location.hash === '#/span' && rows && (state.span = rows))(await docs(state.filter.days))
-const state = new Proxy({ list: [], entities: [], filter: { mode: 'date', days: '7' }, cur: null, edit: null, roster: false }, {
+const state = new Proxy({ list: [], entities: [], filter: { mode: 'date', days: '7' }, cur: null, edit: null, roster: false, rosterRole: 'buyer' }, {
   set: (o, k, v) => (o[k] = v, schedule(), true),
 })
 
 const reload = async () => ([state.list, state.entities] = await Promise.all([db.list(), db.entities()]))
-const blank = id => ({ id, fresh: true, entity_id: null, at: Date.now(), items: [], payments: [] })
+const blank = id => ({ id, fresh: true, entity_id: null, side: 'sale', at: Date.now(), items: [], payments: [] })
 
 const routes = {
   '': async () => ({ cur: null, edit: null, span: null }),
@@ -45,15 +46,19 @@ const route = async () => {
 
 const cell = (tr, name) => tr.querySelector(`[name=${name}]`)
 const rows = (form, k) => [...form.querySelectorAll(`.${k} tbody tr`)]
-const parse = { unit: toNum, total: toNum, amount: toNum, stamp: Number, ref: toNum, debt: toNum }
-const item = tr => Object.fromEntries([...tr.querySelectorAll('input, select')].map(i => [i.name, (parse[i.name] ?? String)(i.value.trim())]))
+const cast = (name, v) => name === 'stamp' ? Number(v) : fields[name]?.type === 'number' || name === 'ref' ? toNum(v) : v
+const item = tr => Object.fromEntries([...tr.querySelectorAll('input, select')].map(i => [i.name, cast(i.name, i.value.trim())]))
 const ent = id => state.entities.find(e => e.id === id) ?? {}
+const roleOf = e => e.role || 'buyer'
+const sideOf = form => form.side?.value || 'sale'
+const fit = (e, kind, side) => e.kind === kind && roleOf(e) === roles[side]
 
-const read = (form, kind = form.kind.value, e = ent(toNum(form.entity.value)), hit = e.kind === kind) => ({
+const read = (form, kind = form.kind.value, side = sideOf(form), e = ent(toNum(form.entity.value)), hit = fit(e, kind, side)) => ({
   id: toNum(form.serial.value),
   entity_id: hit ? e.id : null,
   party: hit ? e.name : form.party.value.trim(),
   kind,
+  side,
   at: +form.at.value,
   fresh: !!form.fresh.value,
   items: rows(form, 'items').map(item).filter(i => i.description || i.total),
@@ -82,8 +87,8 @@ const restore = async (file, mode) => file && confirm(t[`${mode}Ask`]) && (
 )
 
 const options = (pairs, cur) => pairs.map(([v, l]) => `<option value="${h(v)}"${`${v}` === `${cur ?? ''}` ? ' selected' : ''}>${h(l)}</option>`).join('')
-const tune = (form, kind = form.kind.value, id = ent(toNum(form.entity.value)).kind === kind ? form.entity.value : '') => (
-  form.entity.innerHTML = options([['', t.pick], ...state.entities.filter(e => e.kind === kind).map(e => [e.id, e.name])], id),
+const tune = (form, kind = form.kind.value, side = sideOf(form), e = ent(toNum(form.entity.value)), id = fit(e, kind, side) ? form.entity.value : '') => (
+  form.entity.innerHTML = options([['', t.pick], ...state.entities.filter(x => fit(x, kind, side)).map(x => [x.id, x.name])], id),
   form.entity.required = !!kind && kind !== 'other',
   form.party.required = kind === 'other',
   form.entity.ariaInvalid = form.party.ariaInvalid = 'false'
@@ -92,10 +97,12 @@ const tune = (form, kind = form.kind.value, id = ent(toNum(form.entity.value)).k
 const inputs = {
   filters: ({ target }) => (state.filter = Object.fromEntries(new FormData(target.form)), target.name === 'days' && show()),
   editor: ({ target }) => (
-    target.name === 'kind' && tune(target.form),
-    ['qty', 'unit'].includes(target.name) && auto(target.closest('tr')),
-    recalc(target.form)
+    (target.name === 'kind' || target.name === 'side') && tune(target.form),
+    target.name === 'side'
+      ? state.edit = read(target.form)
+      : (['qty', 'unit'].includes(target.name) && auto(target.closest('tr')), recalc(target.form))
   ),
+  entities: ({ target }) => target.name === 'role' && (state.rosterRole = target.value),
   io: ({ target }) => restore(target.files[0], target.name).finally(() => target.value = ''),
 }
 
@@ -121,10 +128,10 @@ const setPalette = s => (
   [...document.querySelectorAll('[data-act=palette]')].map(b => b.ariaPressed = b.dataset.palette === localStorage.palette)
 )
 
-const fields = root => [...root.querySelectorAll('input:not([type=hidden]):not([readonly]), select')]
-const empty = i => ['qty', 'unit', 'amount'].includes(i.name) ? !(toNum(i.value) > 0) : !i.value.trim()
+const controls = root => [...root.querySelectorAll('input:not([type=hidden]):not([readonly]), select')]
+const empty = i => fields[i.name]?.gt ? !(toNum(i.value) > 0) : !i.value.trim()
 const mark = i => (i.setCustomValidity(i.required && empty(i) ? t.need : ''), i.ariaInvalid = `${!i.validity.valid}`)
-const gate = root => (els => (els.map(mark), els.every(i => i.validity.valid || i.reportValidity())))(fields(root))
+const gate = root => (els => (els.map(mark), els.every(i => i.validity.valid || i.reportValidity())))(controls(root))
 const relax = el => ['editor', 'entities'].includes(el.form?.id) && el.setCustomValidity && (el.setCustomValidity(''), el.ariaInvalid = `${!el.validity.valid}`)
 
 const submits = {
@@ -136,7 +143,10 @@ const submits = {
     await reload()
     location.hash = `#/${r.id}`
   },
-  entities: async ({ target }) => gate(target) && (await db.sync(rows(target, 'entities').map(item).filter(e => e.party).map(e => ({ ...e, debt: Math.max(0, e.debt - owed(state.list, e.ref)) }))), reload()),
+  entities: async ({ target }) => {
+    const role = target.role.value
+    return gate(target) && (await db.sync(rows(target, 'entities').map(item).filter(e => e.party).map(e => ({ ...e, role, debt: Math.max(0, e.debt - owed(state.list, e.ref)) })), role), reload())
+  },
 }
 
 addEventListener('beforeinput', e => e.target.type === 'number' && /[۰-۹٠-٩٫,]/.test(e.data ?? '') && (e.preventDefault(), e.target.value = ascii(e.target.value + e.data).replace(/[,٬]/g, '').replace('٫', '.'), e.target.dispatchEvent(new Event('input', { bubbles: true }))))
