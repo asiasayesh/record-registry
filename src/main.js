@@ -126,6 +126,7 @@ const acts = {
   print: async ({ dataset: { id } }) => (sheet(id ? await db.get(+id) : state.cur ?? draft()), print()),
   cancel: async ({ dataset: { id } }) => (await db.cancel(+id), await route()),
   backup: async () => download(await db.dump(), `tx-ledger-${new Date().toLocaleDateString('sv')}.sqlite3`),
+  wipe: async () => confirm(t.wipeAsk) && confirm(t.wipeAgain) && (await db.wipe(), await reload(), $('#settings').close(), location.hash = '#/'),
   lang: () => (state.edit && (state.edit = read($('#editor'))), setLang(t.next), paint()),
   theme: () => setTheme(tone() === 'dark' ? 'light' : 'dark'),
   palette: ({ dataset: { palette } }) => setPalette(palette),
@@ -140,7 +141,11 @@ const setPalette = (s, buttons = [...document.querySelectorAll('[data-act=palett
 
 const controls = root => [...root.querySelectorAll('input:not([type=hidden]):not([readonly]), select')]
 const empty = i => fields[i.name]?.gt ? !(toNum(i.value) > 0) : !i.value.trim()
-const mark = i => (i.setCustomValidity(i.required && empty(i) ? t.need : ''), i.ariaInvalid = `${!i.validity.valid}`)
+const mark = i => (
+  i.form?.id === 'entities' && i.name === 'party' && i.toggleAttribute('required', !!i.value.trim()),
+  i.setCustomValidity(i.required && empty(i) ? t.need : ''),
+  i.ariaInvalid = `${!i.validity.valid}`
+)
 const gate = root => (els => (els.map(mark), els.every(i => i.validity.valid || i.reportValidity())))(controls(root))
 const relax = el => ['editor', 'entities'].includes(el.form?.id) && el.setCustomValidity && (el.setCustomValidity(''), el.ariaInvalid = `${!el.validity.valid}`)
 
@@ -155,7 +160,7 @@ const submits = {
   },
   entities: async ({ target }) => {
     const role = target.role.value
-    return gate(target) && (await db.sync(rows(target, 'entities').map(item).filter(e => e.party).map(e => ({ ...e, role, debt: Math.max(0, e.debt - owed(state.list, e.ref)) })), role), reload())
+    return gate(target) && (await db.sync(rows(target, 'entities').map(item).filter(e => e.party).map(e => ({ ...e, role, debt: Math.max(0, e.debt - owed(state.list, e.ref)) })), role), cache.record = '', reload())
   },
 }
 

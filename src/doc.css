@@ -26,7 +26,7 @@
   }
   &:has(.party select[name=kind] :checked[value=other]):has(.party select[name=entity] :checked[value=""]) .due:has([name=prior], [name=debt]) { display: none }
   & :is(td, .party) :is(input, select):is(:user-invalid, [aria-invalid=true]) { border-color: light-dark(oklch(55% .24 25), oklch(70% .2 25)); background: light-dark(oklch(96% .04 25), oklch(28% .08 25)) }
-  & table { width: 100%; border-spacing: 0; border: 0; border-radius: var(--r-sm); overflow: hidden }
+  & table { width: 100%; border-spacing: 0; border: 0; border-radius: var(--r-sm); overflow: clip }
   & tbody { counter-reset: row }
   & select {
     min-width: 7.5rem; padding-inline: 12px 2.2rem;
@@ -67,8 +67,13 @@
   & .entities td:nth-child(3) { width: 9rem }
   & td:has(input:not([type=hidden]), select) {
     padding: 4px;
-    & :is(input, select) { width: 100%; border-color: transparent; background: transparent; &:focus-visible { border-color: var(--accent); background: var(--bg) } }
-    & input[name=total] { pointer-events: none; &:focus-visible { border-color: transparent; background: transparent; outline: none } }
+    & :is(input, select) {
+      width: 100%;
+      border-color: color-mix(in oklab, var(--ink) 11%, transparent);
+      background: color-mix(in oklab, var(--ink) 4.5%, transparent);
+      &:focus { border-color: var(--accent); background: var(--surface); outline: 2px solid var(--accent); outline-offset: 1px }
+    }
+    & input[name=total] { pointer-events: none; border-color: transparent; background: transparent; &:focus { border-color: transparent; background: transparent; outline: none } }
   }
   & td.tools { width: 1%; padding-inline: 2px; white-space: nowrap; text-align: end }
   & td button { width: var(--h); padding: 0; border-radius: 50% }

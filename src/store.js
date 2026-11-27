@@ -59,10 +59,16 @@ export const save = async r => {
 export const cancel = id => exec('UPDATE records SET cancelled = NOT ifnull(cancelled, 0) WHERE id = ?', id)
 
 export const entities = () => exec('SELECT * FROM entities ORDER BY name').then(rows => rows.map(e => ({ ...e, id: num(e.id), debt: num(e.debt) })))
-export const sync = (rows, role = 'buyer') => call('tx', [
-  [`DELETE FROM entities WHERE ifnull(role, 'buyer') = ? AND id NOT IN (SELECT value FROM json_each(?)) AND id NOT IN (SELECT entity_id FROM records WHERE entity_id NOTNULL)`, [role, JSON.stringify(rows.map(e => e.ref).filter(Boolean))]],
-  ...rows.map(e => ['INSERT INTO entities (id, name, kind, debt, role) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, kind = excluded.kind, debt = excluded.debt, role = excluded.role', [e.ref || null, e.party, e.kind, e.debt, e.role || role]]),
-])
+export const sync = (rows, role = 'buyer') => {
+  const keep = JSON.stringify(rows.map(e => e.ref).filter(Boolean))
+  const gone = `ifnull(role, 'buyer') = ? AND id NOT IN (SELECT value FROM json_each(?))`
+  return call('tx', [
+    [`UPDATE records SET party = coalesce(nullif(party, ''), (SELECT name FROM entities WHERE id = records.entity_id)), entity_id = NULL WHERE entity_id IN (SELECT id FROM entities WHERE ${gone})`, [role, keep]],
+    [`DELETE FROM entities WHERE ${gone}`, [role, keep]],
+    ...rows.map(e => ['INSERT INTO entities (id, name, kind, debt, role) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, kind = excluded.kind, debt = excluded.debt, role = excluded.role', [e.ref || null, e.party, e.kind, e.debt, e.role || role]]),
+  ])
+}
+export const wipe = () => call('tx', ['payments', 'items', 'records', 'entities'].map(k => [`DELETE FROM ${k}`]))
 
 export const dump = () => call('dump')
 export const load = (bytes, mode) => call('load', bytes, mode)

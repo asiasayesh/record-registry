@@ -18,7 +18,7 @@ export const fields = {
 export const grids = {
   items: { add: 'addRow', tone: 'debit', cols: ['row', 'description', 'qty', 'unit', 'total'] },
   pays: { add: 'addPay', tone: 'credit', cols: ['row', 'note', 'date', 'amount'] },
-  entities: { add: 'addEntity', cols: ['row', 'name', 'kind', 'records', 'debt'] },
+  entities: { add: 'addEntity', cols: ['row', 'name', 'kind', 'records', 'owed'] },
 }
 
 export const roles = { sale: 'buyer', buy: 'seller' }
