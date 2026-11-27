@@ -21,7 +21,7 @@ const mount = (id, html) => {
   const el = $(`#${id}`)
   const form = (el.innerHTML = cache[id] = html, el.querySelector('#editor, #entities'))
   id === 'screen' && (el.ariaLabel = state.edit?.fresh ? t.new : t.edit, html ? el.open || (el.showModal(), el.querySelector('[name=kind]')?.focus()) : (origin.editor = null, el.close()))
-  form && pin(form)
+  form && (pin(form), controls(form).map(hint))
 }
 const paint = () => Object.entries(regions)
   .map(([id, view]) => [id, view(state)])
@@ -64,10 +64,10 @@ const item = tr => Object.fromEntries([...tr.querySelectorAll('input, select')].
 const ent = id => state.entities.find(e => e.id === id) ?? {}
 const sideOf = form => form.side?.value || 'sale'
 
-const read = (form, kind = form.kind.value, side = sideOf(form), e = ent(toNum(form.entity.value)), hit = fit(e, kind, side)) => ({
+const read = (form, kind = form.kind.value, side = sideOf(form), e = ent(toNum(form.entity.value)), hit = fit(e, kind, side), typed = form.party.value.trim()) => ({
   id: toNum(form.serial.value),
   entity_id: hit ? e.id : null,
-  party: hit ? e.name : form.party.value.trim(),
+  party: typed || (hit ? e.name : ''),
   kind,
   side,
   at: +form.at.value,
@@ -97,11 +97,14 @@ const restore = async (file, mode) => file && confirm(t[`${mode}Ask`]) && (
   location.hash = '#/'
 )
 
-const tune = (form, kind = form.kind.value, side = sideOf(form), e = ent(toNum(form.entity.value)), id = fit(e, kind, side) ? form.entity.value : '') => (
-  form.entity.innerHTML = opts([['', t.pick], ...state.entities.filter(x => fit(x, kind, side)).map(x => [x.id, x.name])], id),
-  form.entity.required = !!kind && kind !== 'other',
-  form.party.required = kind === 'other' && !toNum(form.entity.value),
-  form.entity.ariaInvalid = form.party.ariaInvalid = 'false'
+const tune = (form, kind = form.kind.value, side = sideOf(form), e = ent(toNum(form.entity.value)), ok = fit(e, kind, side)) => (
+  form.entity.innerHTML = opts([['', t.pick], ...state.entities.filter(x => fit(x, kind, side)).map(x => [x.id, x.name || t.need])], ok ? e.id : ''),
+  ok && e.name && (form.party.value = e.name),
+  form.querySelector('.party').toggleAttribute('data-open', !(ok && e.name)),
+  form.entity.required = !!kind && kind !== 'other' && !form.party.value.trim(),
+  form.party.required = !!kind && !(ok && e.name),
+  hint(form.entity),
+  hint(form.party)
 )
 
 const inputs = {
@@ -119,14 +122,20 @@ const inputs = {
 const acts = {
   row: ({ form, dataset: { of } }, body = form.querySelector(`.${of} tbody`)) => (
     body.insertAdjacentHTML('beforeend', lines[of]()),
+    controls(body.lastElementChild).map(hint),
     body.lastElementChild.querySelector('input:not([type=hidden])').focus(),
     dirty(form)
   ),
-  del: (el, form = el.form) => (el.closest('tr').remove(), form.id === 'editor' && recalc(form), dirty(form)),
+  del: (el, form = el.form, tr = el.closest('tr'), ref = toNum(tr.querySelector('[name=ref]')?.value)) => (
+    tr.remove(),
+    form.id === 'editor' && recalc(form),
+    dirty(form),
+    ref && form.id === 'entities' && db.drop(ref).then(() => (cache.record = '', reload(), toast('credit', t.saved)), err => toast('del', err.message))
+  ),
   print: async ({ dataset: { id } }) => (sheet(id ? await db.get(+id) : state.cur ?? draft()), print()),
   cancel: async ({ dataset: { id } }) => (await db.cancel(+id), await route()),
   backup: async () => download(await db.dump(), `tx-ledger-${new Date().toLocaleDateString('sv')}.sqlite3`),
-  wipe: async () => confirm(t.wipeAsk) && confirm(t.wipeAgain) && (await db.wipe(), await reload(), $('#settings').close(), location.hash = '#/'),
+  wipe: async () => confirm(t.wipeAsk) && confirm(t.wipeAgain) && (await db.wipe(), await reload(), $('#settings').close(), location.hash = '#/', toast('credit', t.wipe)),
   lang: () => (state.edit && (state.edit = read($('#editor'))), setLang(t.next), paint()),
   theme: () => setTheme(tone() === 'dark' ? 'light' : 'dark'),
   palette: ({ dataset: { palette } }) => setPalette(palette),
@@ -141,26 +150,28 @@ const setPalette = (s, buttons = [...document.querySelectorAll('[data-act=palett
 
 const controls = root => [...root.querySelectorAll('input:not([type=hidden]):not([readonly]), select')]
 const empty = i => fields[i.name]?.gt ? !(toNum(i.value) > 0) : !i.value.trim()
-const mark = i => (
-  i.form?.id === 'entities' && i.name === 'party' && i.toggleAttribute('required', !!i.value.trim()),
-  i.setCustomValidity(i.required && empty(i) ? t.need : ''),
-  i.ariaInvalid = `${!i.validity.valid}`
-)
-const gate = root => (els => (els.map(mark), els.every(i => i.validity.valid || i.reportValidity())))(controls(root))
-const relax = el => ['editor', 'entities'].includes(el.form?.id) && el.setCustomValidity && (el.setCustomValidity(''), el.ariaInvalid = `${!el.validity.valid}`)
+const hint = i => i?.setCustomValidity && (i.setCustomValidity(i.required && empty(i) ? t.need : ''), i.ariaInvalid = `${!i.validity.valid}`, i.title = i.validity.valid ? '' : t.need)
+const gate = root => (els => (els.map(hint), els.every(i => i.validity.valid || i.reportValidity())))(controls(root))
+const relax = el => ['editor', 'entities'].includes(el.form?.id) && hint(el)
 
+const toast = (tone, text, el = $('#toast')) => (el.hidden = false, el.dataset.tone = tone, el.textContent = text, clearTimeout(toast.id), toast.id = setTimeout(() => el.hidden = true, 2200))
 const submits = {
   editor: async ({ target }) => {
-    if (!gate(target)) return
+    if (!gate(target)) return toast('del', t.need)
     const r = read(target)
     r.fresh && (r.id = await db.next())
     await db.save(r)
     await reload()
+    toast('credit', t.saved)
     location.hash = `#/${r.id}`
   },
   entities: async ({ target }) => {
+    if (!gate(target)) return toast('del', t.need)
     const role = target.role.value
-    return gate(target) && (await db.sync(rows(target, 'entities').map(item).filter(e => e.party).map(e => ({ ...e, role, debt: Math.max(0, e.debt - owed(state.list, e.ref)) })), role), cache.record = '', reload())
+    await db.sync(rows(target, 'entities').map(item).filter(e => e.party).map(e => ({ ...e, role, debt: Math.max(0, e.debt - owed(state.list, e.ref)) })), role)
+    cache.record = ''
+    await reload()
+    toast('credit', t.saved)
   },
 }
 
@@ -174,7 +185,7 @@ addEventListener('submit', e => (e.preventDefault(), submits[e.target.id]?.(e)))
 addEventListener('hashchange', route)
 addEventListener('beforeprint', () => $('#sheet').childElementCount || sheet(state.cur ?? draft()))
 addEventListener('afterprint', () => $('#sheet').replaceChildren())
-addEventListener('unhandledrejection', e => $('#record').innerHTML = cache.record = `<p class="hint">${h(e.reason?.message ?? e.reason)}</p>`)
+addEventListener('unhandledrejection', e => (e.preventDefault(), toast('del', e.reason?.message || t.failed)))
 
 const split = $('#split')
 const rtl = () => document.dir === 'rtl'

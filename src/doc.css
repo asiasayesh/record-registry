@@ -21,8 +21,8 @@
     & select[name=kind] { flex: 0 0 auto; width: auto; min-width: 8.5rem }
     & :is(select[name=entity], input) { flex: 1; min-width: 8rem }
     & select[name=entity] { min-width: 14rem }
-    &:not(:has([value=other]:checked)) input,
-    &:has(select[name=entity] :checked:not([value=""])) input { display: none }
+    &:not([data-open]):not(:has([value=other]:checked)) input,
+    &:not([data-open]):has(select[name=entity] :checked:not([value=""])) input { display: none }
   }
   &:has(.party select[name=kind] :checked[value=other]):has(.party select[name=entity] :checked[value=""]) .due:has([name=prior], [name=debt]) { display: none }
   & :is(td, .party) :is(input, select):is(:user-invalid, [aria-invalid=true]) { border-color: light-dark(oklch(55% .24 25), oklch(70% .2 25)); background: light-dark(oklch(96% .04 25), oklch(28% .08 25)) }

@@ -704,3 +704,18 @@ dialog {
     }
   }
 }
+
+#toast {
+  position: fixed;
+  z-index: 5;
+  inset-block-end: 20px;
+  left: 50%;
+  translate: -50%;
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: var(--r);
+  background: var(--tone-soft);
+  color: var(--tone-ink);
+  border: 1px solid color-mix(in oklch, var(--tone-solid) 55%, transparent);
+  &[hidden] { display: none }
+}

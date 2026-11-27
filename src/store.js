@@ -49,7 +49,8 @@ export const save = async r => {
   const [hit] = r.entity_id ? await exec(`SELECT ifnull(role, 'buyer') role FROM entities WHERE id = ?`, r.entity_id) : []
   if (hit && hit.role !== want) throw new Error(t.mismatch)
   return call('tx', [
-  ['INSERT INTO records (id, entity_id, party, at, side) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET entity_id = excluded.entity_id, party = excluded.party, side = excluded.side', [r.id, r.entity_id, r.entity_id ? null : r.party, r.at, r.side || 'sale']],
+  ['INSERT INTO records (id, entity_id, party, at, side) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET entity_id = excluded.entity_id, party = excluded.party, side = excluded.side', [r.id, r.entity_id, r.party || null, r.at, r.side || 'sale']],
+  ...(r.entity_id && r.party ? [['UPDATE entities SET name = ? WHERE id = ?', [r.party, r.entity_id]]] : []),
   ...['items', 'payments'].map(k => [`DELETE FROM ${k} WHERE record_id = ?`, [r.id]]),
   ...r.items.map((it, n) => ['INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)', [r.id, n, it.description, it.qty, it.unit, it.total]]),
   ...r.payments.map((p, n) => ['INSERT INTO payments VALUES (?, ?, ?, ?, ?)', [r.id, n, p.amount, p.stamp, p.note]]),
@@ -69,6 +70,10 @@ export const sync = (rows, role = 'buyer') => {
   ])
 }
 export const wipe = () => call('tx', ['payments', 'items', 'records', 'entities'].map(k => [`DELETE FROM ${k}`]))
+export const drop = id => call('tx', [
+  [`UPDATE records SET party = coalesce(nullif(party, ''), (SELECT name FROM entities WHERE id = records.entity_id)), entity_id = NULL WHERE entity_id = ?`, [id]],
+  [`DELETE FROM entities WHERE id = ?`, [id]],
+])
 
 export const dump = () => call('dump')
 export const load = (bytes, mode) => call('load', bytes, mode)
