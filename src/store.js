@@ -4,17 +4,17 @@ import { t } from '@/i18n.js'
 const worker = new Worker(new URL('./db.js', import.meta.url), {
   type: 'module',
 })
-addEventListener('pagehide', () => worker.postMessage({ op: 'pause' }))
-addEventListener(
-  'pageshow',
-  (e) => e.persisted && worker.postMessage({ op: 'resume' }),
-)
+const life = [
+  ['pagehide', () => worker.postMessage({ op: 'pause' })],
+  ['pageshow', (e) => e.persisted && worker.postMessage({ op: 'resume' })],
+]
+life.map(([ev, fn]) => addEventListener(ev, fn))
 const pending = new Map()
 
-worker.onmessage = ({ data: { id, value, error } }) => (
-  pending.get(id)[error ? 1 : 0](error ? new Error(error) : value),
+worker.onmessage = ({ data: { id, value, error } }) => {
+  pending.get(id)[error ? 1 : 0](error ? new Error(error) : value)
   pending.delete(id)
-)
+}
 
 const call = (op, ...args) => {
   const id = crypto.randomUUID()

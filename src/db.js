@@ -48,10 +48,11 @@ const migrate = (db) => {
     .filter(([table, col]) => !cols(table).includes(col))
     .map(([, , sql]) => db.transaction((tx) => tx.exec(sql)))
   db.transaction((tx) => linkOthers(tx))
-  rows(db, 'PRAGMA user_version')[0].user_version ||
-    db.transaction(
-      (tx) => (adoptOthers(tx), tx.exec('PRAGMA user_version = 1')),
-    )
+  if (!rows(db, 'PRAGMA user_version')[0].user_version)
+    db.transaction((tx) => {
+      adoptOthers(tx)
+      tx.exec('PRAGMA user_version = 1')
+    })
 }
 
 const backup = async (pool) => {
@@ -86,14 +87,15 @@ const install = (sqlite3, n = 0) =>
       preserveOnInitFailure: true,
       forceReinitIfPreviouslyFailed: !!n,
     })
-    .catch((e) =>
-      locked(e) && n < 5
-        ? (channel.postMessage('release'),
-          wait(150 * (n + 1)).then(() => install(sqlite3, n + 1)))
-        : Promise.reject(
-            locked(e) ? new Error('registry file is still locked') : e,
-          ),
-    )
+    .catch((e) => {
+      if (locked(e) && n < 5) {
+        channel.postMessage('release')
+        return wait(150 * (n + 1)).then(() => install(sqlite3, n + 1))
+      }
+      return Promise.reject(
+        locked(e) ? new Error('registry file is still locked') : e,
+      )
+    })
 
 const boot = async () => {
   const sqlite3 = await init()
@@ -102,7 +104,11 @@ const boot = async () => {
   const pool = await install(sqlite3).finally(
     () => (sqlite3.config.error = error),
   )
-  const open = () => ((db) => (migrate(db), db))(new pool.OpfsSAHPoolDb(file))
+  const open = () => {
+    const db = new pool.OpfsSAHPoolDb(file)
+    migrate(db)
+    return db
+  }
   const ctx = { pool, sqlite3, open, db: open() }
   live = true
   backup(pool).catch(console.warn)
@@ -110,8 +116,11 @@ const boot = async () => {
 }
 
 const ready = boot()
-const drop = (ctx) =>
-  ctx.pool.isPaused() || (ctx.db.close(), ctx.pool.pauseVfs())
+const drop = (ctx) => {
+  if (ctx.pool.isPaused()) return
+  ctx.db.close()
+  ctx.pool.pauseVfs()
+}
 channel.onmessage = () => live && ready.then(drop).catch(() => {})
 
 const incoming = (sqlite3, bytes) => {
@@ -126,21 +135,25 @@ const incoming = (sqlite3, bytes) => {
     sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE |
       sqlite3.capi.SQLITE_DESERIALIZE_RESIZEABLE,
   )
-  rc && (sqlite3.wasm.dealloc(p), db.close())
+  if (rc) {
+    sqlite3.wasm.dealloc(p)
+    db.close()
+  }
   return db.checkRc(rc)
 }
 
-const replace = async (ctx, bytes) => (
-  ctx.db.close(),
-  await Promise.try(() => ctx.pool.importDb(file, bytes)).finally(
-    () => (ctx.db = ctx.open()),
-  )
-)
+const replace = async (ctx, bytes) => {
+  ctx.db.close()
+  await Promise.try(() => ctx.pool.importDb(file, bytes)).finally(() => {
+    ctx.db = ctx.open()
+  })
+}
 const merge = (ctx, bytes) => {
   const src = incoming(ctx.sqlite3, bytes)
-  return Promise.try(
-    () => (migrate(src), ctx.db.transaction((db) => absorb(db, read(src)))),
-  ).finally(() => src.close())
+  return Promise.try(() => {
+    migrate(src)
+    return ctx.db.transaction((db) => absorb(db, read(src)))
+  }).finally(() => src.close())
 }
 
 const ops = {
@@ -151,11 +164,14 @@ const ops = {
   load: (ctx, bytes, mode) =>
     (mode === 'replace' ? replace : merge)(ctx, bytes).then(() => true),
   pause: drop,
-  resume: async (ctx) =>
-    ctx.pool.isPaused() && (await ctx.pool.unpauseVfs(), (ctx.db = ctx.open())),
+  resume: async (ctx) => {
+    if (!ctx.pool.isPaused()) return
+    await ctx.pool.unpauseVfs()
+    ctx.db = ctx.open()
+  },
 }
 
-onmessage = ({ data: { id, op, args } }) =>
+self.onmessage = ({ data: { id, op, args } }) =>
   ready
     .then((ctx) => ops[op](ctx, ...(args ?? [])))
     .then(

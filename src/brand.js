@@ -13,24 +13,22 @@ const fallback = {
 }
 
 const brand = { ...fallback }
+const copy = ['name', 'tagline', 'phone', 'fax', 'mobile']
 const max = 250
 const blobUrl = (bytes, mime) =>
   bytes?.byteLength
     ? URL.createObjectURL(new Blob([bytes], { type: mime || 'image/png' }))
     : fallback.logo
 
-export const apply = (row) => (
-  brand.logo.startsWith('blob:') && URL.revokeObjectURL(brand.logo),
-  Object.assign(brand, {
-    name: row?.name ?? fallback.name,
-    tagline: row?.tagline ?? fallback.tagline,
-    phone: row?.phone ?? fallback.phone,
-    fax: row?.fax ?? fallback.fax,
-    mobile: row?.mobile ?? fallback.mobile,
-    logo: blobUrl(row?.logo, row?.mime),
-  }),
+export const apply = (row) => {
+  if (brand.logo.startsWith('blob:')) URL.revokeObjectURL(brand.logo)
+  Object.assign(
+    brand,
+    Object.fromEntries(copy.map((k) => [k, row?.[k] ?? fallback[k]])),
+    { logo: blobUrl(row?.logo, row?.mime) },
+  )
   document.querySelector('#bar nav a img')?.setAttribute('src', brand.logo)
-)
+}
 
 const mark = (img, src, blob) => {
   if (img.dataset.blob) URL.revokeObjectURL(img.dataset.blob)
@@ -50,13 +48,13 @@ export const showLogo = (
     !brand.logo.startsWith('blob:')
 }
 
-export const letter = (form = document.querySelector('#io')) => (
-  ['name', 'tagline', 'phone', 'fax', 'mobile'].map(
-    (k) => (form.elements[k].value = tr(brand[k]) ?? ''),
-  ),
-  showLogo(form),
+export const values = (form) =>
+  Object.fromEntries(copy.map((k) => [k, form.elements[k].value.trim()]))
+export const letter = (form = document.querySelector('#io')) => {
+  copy.map((k) => (form.elements[k].value = tr(brand[k]) ?? ''))
+  showLogo(form)
   form.querySelector('.primary').toggleAttribute('data-dirty', false)
-)
+}
 
 const load = (file) =>
   new Promise(

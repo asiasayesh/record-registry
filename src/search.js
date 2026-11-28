@@ -1,30 +1,32 @@
-import { t, ascii, text } from '@/i18n.js'
+import { ascii, t, text } from '@/i18n.js'
 
+const folds = [
+  [/[يىئ]/g, 'ی'],
+  [/ك/g, 'ک'],
+  [/[أإآ]/g, 'ا'],
+  [/ةۀ/g, 'ه'],
+  [/ؤ/g, 'و'],
+  [/[\u200c\u0640\u064b-\u0652]/g, ''],
+]
 const norm = (s) =>
-  ascii(s)
-    .toLowerCase()
-    .replace(/[يىئ]/g, 'ی')
-    .replace(/ك/g, 'ک')
-    .replace(/[أإآ]/g, 'ا')
-    .replace(/[ةۀ]/g, 'ه')
-    .replace(/ؤ/g, 'و')
-    .replace(/[\u200c\u0640\u064b-\u0652]/g, '')
+  folds
+    .reduce((v, [re, to]) => v.replace(re, to), ascii(s).toLowerCase())
     .trim()
 const dist = (a, b) =>
   [...a]
     .reduce(
       (prev, ca) =>
         [...b].reduce(
-          (row, cb, j) => (
+          (row, cb, j) => {
             row.push(
               Math.min(
                 row.at(-1) + 1,
                 prev[j + 1] + 1,
                 prev[j] + (ca === cb ? 0 : 1),
               ),
-            ),
-            row
-          ),
+            )
+            return row
+          },
           [prev[0] + 1],
         ),
       [0, ...[...b].map((_, i) => i + 1)],

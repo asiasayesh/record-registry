@@ -37,7 +37,10 @@ const link = (db, entities) => {
           e.role ?? 'buyer',
           have,
         ])
-      have ?? ((byKey[key(e)] = next), used.add(next))
+      if (have == null) {
+        byKey[key(e)] = next
+        used.add(next)
+      }
       return [num(e.id), next]
     }),
   )
@@ -62,7 +65,7 @@ export const read = (db) => ({
   ),
 })
 
-const put = (db, src, linked, r, id = num(r.id)) => (
+const put = (db, src, linked, r, id = num(r.id)) => {
   rows(
     db,
     `INSERT INTO records (id, entity_id, party, at, opened, cancelled, side) VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -76,10 +79,10 @@ const put = (db, src, linked, r, id = num(r.id)) => (
       r.cancelled,
       r.side ?? 'sale',
     ],
-  ),
-  rows(db, 'DELETE FROM items WHERE record_id = ?', [id]),
-  rows(db, 'DELETE FROM payments WHERE record_id = ?', [id]),
-  (src.items[id] ?? []).map((i) =>
+  )
+  rows(db, 'DELETE FROM items WHERE record_id = ?', [id])
+  rows(db, 'DELETE FROM payments WHERE record_id = ?', [id])
+  ;(src.items[id] ?? []).map((i) =>
     rows(db, 'INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)', [
       id,
       i.n,
@@ -88,8 +91,8 @@ const put = (db, src, linked, r, id = num(r.id)) => (
       i.unit,
       i.total,
     ]),
-  ),
-  (src.payments[id] ?? []).map((p) =>
+  )
+  ;(src.payments[id] ?? []).map((p) =>
     rows(db, 'INSERT INTO payments VALUES (?, ?, ?, ?, ?)', [
       id,
       p.n,
@@ -98,7 +101,7 @@ const put = (db, src, linked, r, id = num(r.id)) => (
       p.note,
     ]),
   )
-)
+}
 
 export const absorb = (db, src, linked = link(db, src.entities)) =>
   src.records.map((r) => put(db, src, linked, r))

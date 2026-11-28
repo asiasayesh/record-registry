@@ -1,12 +1,12 @@
 import '@/style.css'
 import '@/doc.css'
 import '@/print.css'
-import { t, setLang, lang } from '@/i18n.js'
-import { history, record, screen } from '@/view.js'
-import * as db from '@/store.js'
-import { pin, controls, hint, typed, beforeDigits, forget } from '@/form.js'
 import { apply, letter, logoPreview } from '@/brand.js'
-import { act, submit, restore, preview, toast, bootTheme } from '@/cmd.js'
+import { act, bootTheme, preview, restore, submit, toast } from '@/cmd.js'
+import { beforeDigits, controls, forget, hint, pin, typed } from '@/form.js'
+import { lang, setLang, t } from '@/i18n.js'
+import * as db from '@/store.js'
+import { history, record, screen } from '@/view.js'
 
 const $ = (s) => document.querySelector(s)
 
@@ -14,24 +14,25 @@ const regions = { list: history, record, screen }
 const cache = {}
 const mount = (id, html) => {
   const el = $(`#${id}`)
-  const form =
-    ((el.innerHTML = cache[id] = html),
-    el.querySelector('#editor, #entities, #born'))
-  id === 'screen' &&
-    ((el.ariaLabel = state.born
-      ? t.addEntity
-      : state.edit?.fresh
-        ? t.new
-        : t.edit),
-    html
-      ? el.open ||
-        (el.showModal(),
-        (
-          form?.querySelector('[autofocus]') ??
-          form?.querySelector('[name=kind]')
-        )?.focus())
-      : (forget('editor'), el.close()))
-  form && (pin(form), controls(form).map(hint))
+  el.innerHTML = html
+  cache[id] = html
+  const form = el.querySelector('#editor, #entities, #born')
+  if (id === 'screen') {
+    el.ariaLabel = state.born ? t.addEntity : state.edit?.fresh ? t.new : t.edit
+    if (html && !el.open) {
+      el.showModal()
+      const focus =
+        form?.querySelector('[autofocus]') ?? form?.querySelector('[name=kind]')
+      focus?.focus()
+    }
+    if (!html) {
+      forget('editor')
+      el.close()
+    }
+  }
+  if (!form) return
+  pin(form)
+  controls(form).map(hint)
 }
 const paint = () =>
   Object.entries(regions)
@@ -39,8 +40,12 @@ const paint = () =>
     .filter(([id, html]) => cache[id] !== html)
     .map(([id, html]) => mount(id, html))
 
-const schedule = () =>
-  (schedule.id ||= requestAnimationFrame(() => ((schedule.id = 0), paint())))
+const schedule = () => {
+  schedule.id ||= requestAnimationFrame(() => {
+    schedule.id = 0
+    paint()
+  })
+}
 const ticket = { n: 0 }
 const from = (n, d = new Date()) =>
   d.setDate(d.setHours(0, 0, 0, 0) && d.getDate() - n + 1)
@@ -51,11 +56,11 @@ const docs = (days) =>
         ? state.list.filter((r) => r.at >= from(+days)).map((r) => db.get(r.id))
         : [],
     ).then((rows) => mine === ticket.n && rows.filter(Boolean)))(++ticket.n)
-const show = async () =>
-  location.hash === '#/span' &&
-  ((rows) => location.hash === '#/span' && rows && (state.span = rows))(
-    await docs(state.filter.days),
-  )
+const show = async () => {
+  if (location.hash !== '#/span') return
+  const rows = await docs(state.filter.days)
+  if (location.hash === '#/span' && rows) state.span = rows
+}
 const state = new Proxy(
   {
     list: [],
@@ -68,18 +73,22 @@ const state = new Proxy(
     layout: localStorage.layout === 'rows' ? 'rows' : 'cards',
   },
   {
-    set: (o, k, v) => ((o[k] = v), schedule(), true),
+    set: (o, k, v) => {
+      o[k] = v
+      schedule()
+      return true
+    },
   },
 )
 
-const reload = async () => (
-  ([state.list, state.entities] = await Promise.all([
+const reload = async () => {
+  ;[state.list, state.entities] = await Promise.all([
     db.list(),
     db.entities(),
     db.brand().then(apply),
-  ]).then(([list, entities]) => [list, entities])),
-  $('#settings').open && letter()
-)
+  ]).then(([list, entities]) => [list, entities])
+  if ($('#settings').open) letter()
+}
 const blank = (id) => ({
   id,
   fresh: true,
@@ -94,21 +103,30 @@ const ctx = () => ({ state, reload, route, paint, drop })
 
 const routes = {
   '': async () => ({ cur: null, edit: null, span: null }),
-  entities: async () => (await reload(), { cur: null, edit: null, span: null }),
+  entities: async () => {
+    await reload()
+    return { cur: null, edit: null, span: null }
+  },
   new: async () => ({ edit: blank(await db.next()), span: null }),
-  span: async () => (await show(), { cur: null, edit: null }),
+  span: async () => {
+    await show()
+    return { cur: null, edit: null }
+  },
   edit: async (id) =>
-    db
-      .get(id)
-      .then((r) => ({
-        cur: r ?? null,
-        edit: r && !r.cancelled ? r : null,
-        span: null,
-      })),
-  view: async (id) => (
-    await db.touch(id),
-    { cur: await db.get(id), edit: null, span: null, list: await db.list() }
-  ),
+    db.get(id).then((r) => ({
+      cur: r ?? null,
+      edit: r && !r.cancelled ? r : null,
+      span: null,
+    })),
+  view: async (id) => {
+    await db.touch(id)
+    return {
+      cur: await db.get(id),
+      edit: null,
+      span: null,
+      list: await db.list(),
+    }
+  },
 }
 
 const route = async () => {
@@ -117,19 +135,22 @@ const route = async () => {
     roster: id === 'entities',
     born: id === 'entities' && verb === 'new',
   })
-  $('#span').ariaCurrent = id === 'span' ? 'page' : null
-  $(`#bar a[data-t="records"]`).ariaCurrent =
-    id === 'entities' || id === 'new' ? null : 'page'
-  $(`#bar a[href="#/entities"]`).ariaCurrent = id === 'entities' ? 'page' : null
+  const marks = [
+    ['#span', id === 'span'],
+    ['#bar a[data-t="records"]', id !== 'entities' && id !== 'new'],
+    ['#bar a[href="#/entities"]', id === 'entities'],
+  ]
+  marks.map(([sel, on]) => ($(sel).ariaCurrent = on ? 'page' : null))
 }
 
 const inputs = {
-  filters: ({ target }) => (
-    (state.filter = Object.fromEntries(new FormData(target.form))),
-    target.name === 'days' && show()
-  ),
-  entities: ({ target }) =>
-    target.name === 'role' && (state.rosterRole = target.value),
+  filters: ({ target }) => {
+    state.filter = Object.fromEntries(new FormData(target.form))
+    if (target.name === 'days') show()
+  },
+  entities: ({ target }) => {
+    if (target.name === 'role') state.rosterRole = target.value
+  },
   io: ({ target }) =>
     target.name === 'logo'
       ? target.files[0] && logoPreview(target)
@@ -142,53 +163,70 @@ const inputs = {
 const split = $('#split')
 const rtl = () => document.dir === 'rtl'
 const keys = { ArrowLeft: -16, ArrowRight: 16 }
-const setW = (w) => (
-  document.body.style.setProperty('--w', `${w}px`),
-  (split.ariaValueNow = localStorage.w = Math.round(w))
-)
+const setW = (w) => {
+  const next = Math.round(w)
+  document.body.style.setProperty('--w', `${next}px`)
+  localStorage.w = next
+  split.ariaValueNow = next
+}
 
-split.onpointerdown = (e) => (
-  e.preventDefault(), split.setPointerCapture(e.pointerId)
-)
-split.onpointermove = (e) =>
-  split.hasPointerCapture(e.pointerId) &&
-  setW(rtl() ? innerWidth - e.clientX : e.clientX)
-split.onkeydown = (e) =>
-  keys[e.key] &&
-  setW($('#history').offsetWidth + keys[e.key] * (rtl() ? -1 : 1))
-
-addEventListener('beforeinput', beforeDigits)
-addEventListener(
-  'input',
-  (e) => (typed(e, state), inputs[e.target.form?.id]?.(e)),
-)
-$('#screen').onclose = () =>
-  state.born
-    ? (location.hash = '#/entities')
-    : state.edit &&
-      (location.hash = state.edit.fresh ? '#/' : `#/${state.edit.id}`)
-addEventListener('invalid', (e) => (e.target.ariaInvalid = 'true'), true)
 const pick =
   'input:is(:not([type]), [type=text], [type=search]):not([readonly])'
 const grab = (e) => e.target.matches(pick) && e.target.select()
-addEventListener('focusin', grab)
-addEventListener('mouseup', (e) => e.target.matches(pick) && e.preventDefault())
-addEventListener(
-  'click',
-  (e) => (grab(e), act(e.target.closest('[data-act]'), ctx())),
-)
-addEventListener(
-  'submit',
-  (e) => e.target.method === 'dialog' || (e.preventDefault(), submit(e, ctx())),
-)
-$('#settings').ontoggle = ({ newState }) => newState === 'open' && letter()
-addEventListener('hashchange', route)
-addEventListener('beforeprint', () => preview(state))
-addEventListener('afterprint', () => $('#sheet').replaceChildren())
-addEventListener(
-  'unhandledrejection',
-  (e) => (e.preventDefault(), toast('del', e.reason?.message || t.failed)),
-)
+const drag = (e) => {
+  e.preventDefault()
+  split.setPointerCapture(e.pointerId)
+}
+const slide = (e) =>
+  split.hasPointerCapture(e.pointerId) &&
+  setW(rtl() ? innerWidth - e.clientX : e.clientX)
+const nudge = (e) =>
+  keys[e.key] &&
+  setW($('#history').offsetWidth + keys[e.key] * (rtl() ? -1 : 1))
+const type = (e) => {
+  typed(e, state)
+  inputs[e.target.form?.id]?.(e)
+}
+const shut = () => {
+  if (state.born) {
+    location.hash = '#/entities'
+    return
+  }
+  if (!state.edit) return
+  location.hash = state.edit.fresh ? '#/' : `#/${state.edit.id}`
+}
+const press = (e) => {
+  grab(e)
+  act(e.target.closest('[data-act]'), ctx())
+}
+const send = (e) => {
+  if (e.target.method === 'dialog') return
+  e.preventDefault()
+  submit(e, ctx())
+}
+const fail = (e) => {
+  e.preventDefault()
+  toast('del', e.reason?.message || t.failed)
+}
+const wires = [
+  [split, 'pointerdown', drag],
+  [split, 'pointermove', slide],
+  [split, 'keydown', nudge],
+  [window, 'beforeinput', beforeDigits],
+  [window, 'input', type],
+  [$('#screen'), 'close', shut],
+  [window, 'invalid', (e) => (e.target.ariaInvalid = 'true'), true],
+  [window, 'focusin', grab],
+  [window, 'mouseup', (e) => e.target.matches(pick) && e.preventDefault()],
+  [window, 'click', press],
+  [window, 'submit', send],
+  [$('#settings'), 'toggle', ({ newState }) => newState === 'open' && letter()],
+  [window, 'hashchange', route],
+  [window, 'beforeprint', () => preview(state)],
+  [window, 'afterprint', () => $('#sheet').replaceChildren()],
+  [window, 'unhandledrejection', fail],
+]
+wires.map(([el, ev, fn, opt]) => el.addEventListener(ev, fn, opt))
 
 bootTheme()
 setLang(localStorage.lang ?? lang())

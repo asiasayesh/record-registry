@@ -357,9 +357,9 @@ const translate = () =>
     ),
   )
 
-export const setLang = (l) => (
-  Object.assign(document.documentElement, { lang: l, dir: dict[l].dir }),
-  (document.title = t.title),
-  (localStorage.lang = l),
+export const setLang = (l) => {
+  Object.assign(document.documentElement, { lang: l, dir: dict[l].dir })
+  document.title = t.title
+  localStorage.lang = l
   translate()
-)
+}

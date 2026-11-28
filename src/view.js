@@ -1,8 +1,8 @@
 import brand from '@/brand.js'
-import { fields, grids, fit, roleOf, link as linked } from '@/fields.js'
-import { tally, owed, balance } from '@/ledger.js'
-import { t, tr, ts, lang, digits, num, toNum, date, words } from '@/i18n.js'
-import { match, hit, terms } from '@/search.js'
+import { fields, fit, grids, link as linked, roleOf } from '@/fields.js'
+import { date, digits, lang, num, t, toNum, tr, ts, words } from '@/i18n.js'
+import { balance, owed, tally } from '@/ledger.js'
+import { hit, match, terms } from '@/search.js'
 
 export const h = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt()};`)
@@ -86,15 +86,26 @@ const head = (r, serial, party, extra = '') => `
   <header>
     <hgroup>
       ${tr(brand.name) ? `<h1>${h(tr(brand.name))}</h1>` : ''}
-      ${line(tr(brand.tagline) && h(tr(brand.tagline)))}
-      ${line([bit('phone', brand.phone), bit('fax', brand.fax)].filter(Boolean).join(' · '))}
-      ${line(bit('mobile', brand.mobile))}
+      ${[
+        tr(brand.tagline) && h(tr(brand.tagline)),
+        [bit('phone', brand.phone), bit('fax', brand.fax)]
+          .filter(Boolean)
+          .join(' · '),
+        bit('mobile', brand.mobile),
+      ]
+        .map(line)
+        .filter(Boolean)
+        .join('')}
     </hgroup>
     <img src="${brand.logo}" alt="">
     ${extra}
     <dl>
-      <div><dt>${t.serial}</dt><dd>${serial}</dd></div>
-      <div><dt>${t.date}</dt><dd>${date(r.at)}</dd></div>
+      ${[
+        [t.serial, serial],
+        [t.date, date(r.at)],
+      ]
+        .map(([dt, dd]) => `<div><dt>${dt}</dt><dd>${dd}</dd></div>`)
+        .join('')}
     </dl>
   </header>
   ${party}`
@@ -125,10 +136,19 @@ const dues = (v, keys = Object.keys(v), side = 'sale') =>
     )
     .join('')
 
+const bar = (r) =>
+  [
+    !r.cancelled &&
+      `<a class="btn" data-tone="edit" href="#/${r.id}/edit">${t.edit}</a>`,
+    `<button type="button" data-act="cancel" data-tone="cancel" data-id="${r.id}" aria-pressed="${r.cancelled ? 'true' : 'false'}">${t.cancelled}</button>`,
+    `<button type="button" data-act="print" data-tone="out">${t.print}</button>`,
+  ]
+    .filter(Boolean)
+    .join('')
 const doc = (r, list, side = sideOf(r)) =>
   paper(
     r,
-    `${dues(balance(list, r, r.sum, r.paid), r.entity_id ? undefined : ['paid', 'rest'], side)}<nav class="acts">${r.cancelled ? '' : `<a class="btn" data-tone="edit" href="#/${r.id}/edit">${t.edit}</a>`}<button type="button" data-act="cancel" data-tone="cancel" data-id="${r.id}" aria-pressed="${r.cancelled ? 'true' : 'false'}">${t.cancelled}</button><button type="button" data-act="print" data-tone="out">${t.print}</button></nav>`,
+    `${dues(balance(list, r, r.sum, r.paid), r.entity_id ? undefined : ['paid', 'rest'], side)}<nav class="acts">${bar(r)}</nav>`,
     side,
   )
 
@@ -277,22 +297,16 @@ const stack = (rows) =>
   rows.map((r) => paper(r)).join('<hr class="cut">') ||
   `<p class="hint">${t.none}</p>`
 
-export const record = ({
-  cur,
-  list,
-  span,
-  roster,
-  entities,
-  rosterRole = 'buyer',
-  layout = 'cards',
-}) =>
-  roster
-    ? team(entities, list, rosterRole)
-    : cur
-      ? doc(cur, list)
-      : span
-        ? stack(span)
-        : empty(list, layout)
-
-export const screen = ({ edit, list, entities, born, rosterRole = 'buyer' }) =>
-  edit ? editor(edit, list, entities) : born ? entry(rosterRole) : ''
+const shown = [
+  [(s) => s.roster, (s) => team(s.entities, s.list, s.rosterRole ?? 'buyer')],
+  [(s) => s.cur, (s) => doc(s.cur, s.list)],
+  [(s) => s.span, (s) => stack(s.span)],
+  [() => true, (s) => empty(s.list, s.layout ?? 'cards')],
+]
+const opened = [
+  [(s) => s.edit, (s) => editor(s.edit, s.list, s.entities)],
+  [(s) => s.born, (s) => entry(s.rosterRole ?? 'buyer')],
+  [() => true, () => ''],
+]
+export const record = (s) => shown.find(([on]) => on(s))[1](s)
+export const screen = (s) => opened.find(([on]) => on(s))[1](s)

@@ -665,6 +665,9 @@ main {
 
 #split {
   position: relative;
+  margin: 0;
+  border: 0;
+  background: none;
   cursor: col-resize;
   touch-action: none;
   outline: none;

@@ -1,7 +1,7 @@
-import { balance } from '@/ledger.js'
 import { fields, fit, link } from '@/fields.js'
-import { opts, entitySelect } from '@/view.js'
-import { t, ascii, toNum, num, grouped } from '@/i18n.js'
+import { ascii, grouped, num, t, toNum } from '@/i18n.js'
+import { balance } from '@/ledger.js'
+import { entitySelect, opts } from '@/view.js'
 
 const origin = {}
 const live = (form) =>
@@ -22,13 +22,15 @@ export const pin = (
   key = form.id === 'editor'
     ? `e:${form.serial.value}:${form.fresh.value}`
     : 'entities',
-) => (
-  (form.id === 'entities' ||
+) => {
+  if (
+    form.id === 'entities' ||
     form.id === 'born' ||
-    origin[form.id]?.key !== key) &&
-    (origin[form.id] = { key, json: live(form) }),
+    origin[form.id]?.key !== key
+  )
+    origin[form.id] = { key, json: live(form) }
   dirty(form)
-)
+}
 
 const cell = (tr, name) => tr.querySelector(`[name=${name}]`)
 const rows = (form, k) => [...form.querySelectorAll(`.${k} tbody tr`)]
@@ -74,7 +76,10 @@ const auto = (
 ) => (cell(tr, 'total').value = n ? num(n) : '')
 const sumOf = (form, k, name) =>
   rows(form, k).reduce((s, tr) => s + toNum(cell(tr, name).value), 0)
-const put = (out, v) => ((out.value = num(v)), (out.dataset.owe = v > 0))
+const put = (out, v) => {
+  out.value = num(v)
+  out.dataset.owe = v > 0
+}
 const cap = (form, sum, paid) =>
   rows(form, 'pays')
     .map((tr) => cell(tr, 'amount'))
@@ -86,8 +91,8 @@ export const recalc = (
   sum = sumOf(form, 'items', 'total'),
   paid = sumOf(form, 'pays', 'amount'),
   hit = tied(form, entities),
-) => (
-  cap(form, sum, paid),
+) => {
+  cap(form, sum, paid)
   Object.entries({
     sum,
     ...balance(
@@ -98,7 +103,7 @@ export const recalc = (
       hit.entity?.debt,
     ),
   }).map(([k, v]) => put(form[k], v))
-)
+}
 
 export const controls = (root) => [
   ...root.querySelectorAll('input:not([type=hidden]):not([readonly]), select'),
@@ -110,15 +115,17 @@ const span = (i) =>
   i.value !== '' &&
   ((i.max !== '' && toNum(i.value) > +i.max) ||
     (i.min !== '' && toNum(i.value) < +i.min))
-export const hint = (i) =>
-  i?.setCustomValidity &&
-  (i.setCustomValidity((i.required && empty(i)) || span(i) ? t.need : ''),
-  (i.ariaInvalid = `${!i.validity.valid}`),
-  (i.title = i.validity.valid ? '' : t.need))
-export const gate = (root) =>
-  ((els) => (
-    els.map(hint), els.every((i) => i.validity.valid || i.reportValidity())
-  ))(controls(root))
+export const hint = (i) => {
+  if (!i?.setCustomValidity) return
+  i.setCustomValidity((i.required && empty(i)) || span(i) ? t.need : '')
+  i.ariaInvalid = `${!i.validity.valid}`
+  i.title = i.validity.valid ? '' : t.need
+}
+export const gate = (root) => {
+  const els = controls(root)
+  els.map(hint)
+  return els.every((i) => i.validity.valid || i.reportValidity())
+}
 export const relax = (el) =>
   ['editor', 'entities', 'born'].includes(el.form?.id) && hint(el)
 
@@ -132,14 +139,15 @@ const choices = (entities, kind, side, id) =>
     ],
     id ?? '',
   )
-const slot = (form, entities, kind, side, id) =>
-  form.entity
-    ? ((form.entity.innerHTML = choices(entities, kind, side, id)),
-      (form.entity.required = !!kind))
-    : form.kind.insertAdjacentHTML(
-        'afterend',
-        entitySelect(entities, kind, side, id),
-      )
+const slot = (form, entities, kind, side, id) => {
+  if (!form.entity)
+    return form.kind.insertAdjacentHTML(
+      'afterend',
+      entitySelect(entities, kind, side, id),
+    )
+  form.entity.innerHTML = choices(entities, kind, side, id)
+  form.entity.required = !!kind
+}
 
 export const tune = (
   form,
@@ -147,24 +155,25 @@ export const tune = (
   kind = form.kind.value,
   side = sideOf(form),
   hit = tied(form, state.entities),
-) => (
-  hit.free
-    ? form.entity?.remove()
-    : slot(form, state.entities, kind, side, hit.entity?.id ?? ''),
-  (form.party.disabled = !hit.free),
-  hit.free || (form.party.value = hit.name),
-  (form.party.required = hit.free),
-  hint(form.entity),
+) => {
+  if (hit.free) form.entity?.remove()
+  if (!hit.free) slot(form, state.entities, kind, side, hit.entity?.id ?? '')
+  form.party.disabled = !hit.free
+  if (!hit.free) form.party.value = hit.name
+  form.party.required = hit.free
+  hint(form.entity)
   hint(form.party)
-)
+}
 
-export const edit = ({ target }, state) => (
-  ['kind', 'side', 'entity'].includes(target.name) && tune(target.form, state),
-  target.name === 'side'
-    ? (state.edit = read(target.form, state))
-    : (['qty', 'unit'].includes(target.name) && auto(target.closest('tr')),
-      recalc(target.form, state))
-)
+export const edit = ({ target }, state) => {
+  if (['kind', 'side', 'entity'].includes(target.name)) tune(target.form, state)
+  if (target.name === 'side') {
+    state.edit = read(target.form, state)
+    return
+  }
+  if (['qty', 'unit'].includes(target.name)) auto(target.closest('tr'))
+  recalc(target.form, state)
+}
 
 const place = (
   el,
@@ -175,11 +184,12 @@ const place = (
   ).length,
   seen = { n: 0 },
   at = [...next].findIndex((c) => /\d/.test(ascii(c)) && ++seen.n === keep),
-) => (
-  (el.value = next),
-  (el.selectionStart = el.selectionEnd =
-    keep ? (at < 0 ? next.length : at + 1) : 0)
-)
+) => {
+  const caret = keep ? (at < 0 ? next.length : at + 1) : 0
+  el.value = next
+  el.selectionStart = caret
+  el.selectionEnd = caret
+}
 const mask = (el) =>
   el.matches?.('input[data-num]:not([readonly])') &&
   grouped(el.value) !== el.value &&
@@ -190,9 +200,10 @@ export const beforeDigits = (e) =>
   !/delete|history/i.test(e.inputType) &&
   ![...e.data].some((c) => /[\d۰-۹٠-٩٫.]/.test(c)) &&
   e.preventDefault()
-export const typed = (e, state) => (
-  mask(e.target),
-  e.target.form?.id === 'editor' && edit(e, state),
-  relax(e.target),
-  e.target.name === 'role' || dirty(e.target.form)
-)
+export const typed = (e, state) => {
+  mask(e.target)
+  if (e.target.form?.id === 'editor') edit(e, state)
+  relax(e.target)
+  if (e.target.name === 'role') return
+  dirty(e.target.form)
+}
