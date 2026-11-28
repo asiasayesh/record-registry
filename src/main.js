@@ -190,7 +190,11 @@ addEventListener('input', e => (relax(e.target), inputs[e.target.form?.id]?.(e),
 $('#screen').onclose = () => state.born ? location.hash = '#/entities' : state.edit && (location.hash = state.edit.fresh ? '#/' : `#/${state.edit.id}`)
 addEventListener('invalid', e => e.target.ariaInvalid = 'true', true)
 const act = el => acts[el?.dataset.act]?.(el)
-addEventListener('click', e => act(e.target.closest('[data-act]')))
+const pick = 'input:is(:not([type]), [type=text], [type=number], [type=search]):not([readonly])'
+const grab = e => e.target.matches(pick) && e.target.select()
+addEventListener('focusin', grab)
+addEventListener('mouseup', e => e.target.matches(pick) && e.preventDefault())
+addEventListener('click', e => (grab(e), act(e.target.closest('[data-act]'))))
 addEventListener('submit', e => (e.preventDefault(), submits[e.target.id]?.(e)))
 addEventListener('hashchange', route)
 addEventListener('beforeprint', () => $('#sheet').childElementCount || sheet(state.cur ?? draft()))

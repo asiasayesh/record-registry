@@ -741,10 +741,13 @@ dialog {
         width: 100%;
       }
     }
-    & :is(select[name="kind"], input[name="debt"]) {
+    & select[name="kind"] {
       width: max-content;
       min-width: max-content;
       field-sizing: content;
+    }
+    & input[name="debt"] {
+      width: 11rem;
     }
   }
 }
