@@ -3,13 +3,13 @@ const dict = {
     dir: 'rtl', locale: 'fa-IR-u-ca-persian', digits: '۰۱۲۳۴۵۶۷۸۹', next: 'en',
     title: 'دفتر اسناد', lang: 'EN', new: 'سند جدید',
     settings: 'تنظیمات', appearance: 'نمایش', language: 'زبان', theme: 'حالت', light: 'روشن', dark: 'تیره',
-    palette: 'رنگ', ink: 'مشکی', slate: 'سربی', sand: 'خاکی', blue: 'آبی', sea: 'دریا', green: 'سبز', plum: 'بنفش',
+    palette: 'رنگ', ink: 'مشکی', slate: 'سربی', sand: 'خاکی', blue: 'آبی', sea: 'دریا', green: 'سبز', plum: 'بنفش', rose: 'سرخ',
     data: 'داده', backup: 'پشتیبان‌گیری', merge: 'افزودن اسناد', replace: 'جایگزینی', close: 'بستن',
     backupHint: 'بکاب',     mergeHint: 'سند تازه اضافه می‌شود. سند موجود با فایل به‌روز می‌شود.', replaceHint: 'پایگاه این مرورگر با فایل عوض می‌شود.',
     wipe: 'پاک‌سازی', wipeHint: 'همه سندها و طرف حساب‌ها از این مرورگر پاک می‌شود.',
     wipeAsk: 'همه سندها و طرف حساب‌ها پاک شود؟', wipeAgain: 'برگشت ندارد. دوباره پاک شود؟',
     mergeAsk: 'سندهای این فایل اضافه شود؟ سند موجود با فایل به‌روز می‌شود.', replaceAsk: 'پایگاه داده فعلی با این فایل جایگزین شود؟',
-    print: 'چاپ', edit: 'ویرایش', save: 'ذخیره', saved: 'ذخیره شد', failed: 'ذخیره نشد', cancel: 'انصراف', cancelled: 'باطل', del: 'حذف ردیف', need: 'الزامی',
+    print: 'چاپ', edit: 'ویرایش', save: 'ذخیره', saved: 'ذخیره شد', failed: 'ذخیره نشد', cancel: 'انصراف', cancelled: 'باطل', del: 'حذف ردیف', delAsk: 'این ردیف حذف شود؟', need: 'الزامی',
     search: 'جستجو در نام، نوع و شرح', last: 'آخرین', days: 'روز', from: 'از', to: 'تا', byDate: 'تاریخ', byDesc: 'شرح', resize: 'تغییر عرض',
     serial: 'شماره', date: 'تاریخ', party: 'صورتحساب', pick: 'انتخاب طرف حساب', partyName: 'نام خریدار',
     person: 'شخص', company: 'شرکت', other: 'متفرقه', buyer: 'خریدار', seller: 'فروشنده',
@@ -32,13 +32,13 @@ const dict = {
     dir: 'ltr', locale: 'en-GB', digits: '0123456789', next: 'fa',
     title: 'Tx Ledger', lang: 'فا', new: 'New record',
     settings: 'Settings', appearance: 'Appearance', language: 'Language', theme: 'Theme', light: 'Light', dark: 'Dark',
-    palette: 'Color', ink: 'Ink', slate: 'Slate', sand: 'Sand', blue: 'Blue', sea: 'Sea', green: 'Green', plum: 'Violet',
+    palette: 'Color', ink: 'Ink', slate: 'Slate', sand: 'Sand', blue: 'Blue', sea: 'Sea', green: 'Green', plum: 'Violet', rose: 'Rose',
     data: 'Data', backup: 'Backup', merge: 'Add records', replace: 'Replace', close: 'Close',
     backupHint: 'Download a copy of the database',     mergeHint: 'Add records that are not here. Records already here are updated from the file.', replaceHint: 'Swap the database in this browser for the file.',
     wipe: 'Wipe', wipeHint: 'Erase every record and entity in this browser.',
     wipeAsk: 'Erase all records and entities in this browser?', wipeAgain: 'This cannot be undone. Erase everything?',
     mergeAsk: 'Add records from this file? Records already here are updated from the file.', replaceAsk: 'Replace the current database with this file?',
-    print: 'Print', edit: 'Edit', save: 'Save', saved: 'Saved', failed: 'Not saved', cancel: 'Cancel', cancelled: 'Cancelled', del: 'Remove row', need: 'Required',
+    print: 'Print', edit: 'Edit', save: 'Save', saved: 'Saved', failed: 'Not saved', cancel: 'Cancel', cancelled: 'Cancelled', del: 'Remove row', delAsk: 'Remove this row?', need: 'Required',
     search: 'Search name, type, and description', last: 'Last', days: 'days', from: 'From', to: 'To', byDate: 'Date', byDesc: 'Description', resize: 'Resize',
     serial: 'No.', date: 'Date', party: 'Invoice to', pick: 'Choose entity', partyName: 'Buyer name',
     person: 'Person', company: 'Company', other: 'Other', buyer: 'Buyer', seller: 'Seller',
@@ -69,6 +69,13 @@ export const ascii = s => String(s ?? '').replace(/[۰-۹٠-٩]/g, d => d.charCo
 export const toNum = s => parseFloat(ascii(s).replace(/[,٬\s]/g, '').replace('٫', '.')) || 0
 export const digits = s => String(s ?? '').replace(/\d/g, d => t.digits[d])
 export const num = n => new Intl.NumberFormat(t.locale).format(n || 0)
+const dec = () => new Intl.NumberFormat(t.locale).formatToParts(1.1).find(p => p.type === 'decimal').value
+export const grouped = (s, raw = ascii(s).replace(/٫/g, '.').replace(/[^\d.]/g, ''), dot = raw.indexOf('.')) => {
+  const whole = (dot < 0 ? raw : raw.slice(0, dot)).replace(/^0+(?=\d)/, '')
+  const frac = dot < 0 ? null : raw.slice(dot + 1).replace(/\./g, '')
+  const shown = whole || (dot < 0 ? '' : '0')
+  return shown ? `${num(shown)}${frac == null ? '' : dec() + digits(frac)}` : ''
+}
 export const date = ms => new Intl.DateTimeFormat(t.locale, { dateStyle: 'medium' }).format(ms)
 
 const ones = ['', 'یک', 'دو', 'سه', 'چهار', 'پنج', 'شش', 'هفت', 'هشت', 'نه', 'ده', 'یازده', 'دوازده', 'سیزده', 'چهارده', 'پانزده', 'شانزده', 'هفده', 'هجده', 'نوزده']

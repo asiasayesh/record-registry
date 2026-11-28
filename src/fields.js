@@ -3,7 +3,7 @@ const num = { type: 'number', min: 0, required: true, gt: true }
 
 export const fields = {
   description: text,
-  qty: { ...text, gt: true },
+  qty: num,
   unit: num,
   total: { type: 'number', min: 0, read: true },
   note: text,

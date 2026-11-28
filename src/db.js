@@ -1,5 +1,5 @@
 import init from '@sqlite.org/sqlite-wasm'
-import { absorb, read, rows } from './merge.js'
+import { absorb, adoptOthers, linkOthers, read, rows } from './merge.js'
 
 const file = '/registry.sqlite3'
 const keep = 7
@@ -28,6 +28,8 @@ const migrate = db => {
   db.exec(schema)
   const cols = table => rows(db, `PRAGMA table_info(${table})`).map(c => c.name)
   migrations.filter(([table, col]) => !cols(table).includes(col)).map(([, , sql]) => db.transaction(tx => tx.exec(sql)))
+  db.transaction(tx => linkOthers(tx))
+  rows(db, 'PRAGMA user_version')[0].user_version || db.transaction(tx => (adoptOthers(tx), tx.exec('PRAGMA user_version = 1')))
 }
 
 const backup = async pool => {

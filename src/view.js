@@ -1,6 +1,6 @@
 import brand from '@/brand.js'
 import { fields, grids, fit, roleOf } from '@/fields.js'
-import { t, tr, ts, lang, digits, num, date, words } from '@/i18n.js'
+import { t, tr, ts, lang, digits, num, toNum, date, words } from '@/i18n.js'
 import { match, hit, terms } from '@/search.js'
 
 export const h = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt()};`)
@@ -58,7 +58,7 @@ const head = (r, serial, party, extra = '') => `
   ${party}`
 
 const spell = n => lang() === 'fa' ? `<p><span>${t.words}</span><span>${words(n)} ${t.currency}</span></p>` : ''
-const cells = it => `<tr><td></td><td><bdi>${h(it.description)}</bdi></td><td><bdi>${digits(h(it.qty))}</bdi></td><td>${num(it.unit)}</td><td>${num(it.total)}</td></tr>`
+const cells = it => `<tr><td></td><td><bdi>${h(it.description)}</bdi></td><td>${num(toNum(it.qty))}</td><td>${num(it.unit)}</td><td>${num(it.total)}</td></tr>`
 
 export const paper = (r, acts = '', side = sideOf(r)) => `
   <article class="doc">
@@ -87,20 +87,22 @@ const doc = (r, list, side = sideOf(r)) => paper(r, `${dues(balance(list, r, r.s
 const req = 'required aria-invalid="false"'
 const attr = (name, extra = '') => {
   const f = fields[name] ?? {}
-  return [f.type === 'number' ? `type="number" step="any"${String(extra).includes('min=') ? '' : ` min="${f.min ?? 0}"`}` : '', f.required ? req : '', f.read ? 'readonly tabindex="-1"' : '', extra].filter(Boolean).join(' ')
+  return [f.type === 'number' ? `type="text" inputmode="numeric" data-num${String(extra).includes('min=') ? '' : ` min="${f.min ?? 0}"`}` : '', f.required ? req : '', f.read ? 'readonly tabindex="-1"' : '', extra].filter(Boolean).join(' ')
 }
-const input = (name, value = '', attrs = '') => `<input name="${name}" value="${h(value)}" dir="auto" ${attrs}>`
+const show = (name, value) => fields[name]?.type === 'number' && value !== '' && value != null ? num(toNum(value)) : value
+const input = (name, value = '', attrs = '') => `<input name="${name}" value="${h(show(name, value))}" dir="auto" ${attrs}>`
 const control = (name, value, extra) => input(name, value ?? '', attr(name, extra))
 export const opts = (pairs, cur) => pairs.map(([v, l]) => `<option value="${h(v)}"${`${v}` === `${cur ?? ''}` ? ' selected' : ''}>${h(l)}</option>`).join('')
+export const entitySelect = (entities, kind, side, id) => `<select name="entity" aria-invalid="${kind && !id ? 'true' : 'false'}" aria-label="${ts(side, 'party')}"${kind ? ' required' : ''}>${opts([['', t.pick], ...entities.filter(x => fit(x, kind, side)).map(x => [x.id, x.name || t.need])], id ?? '')}</select>`
 const tools = (attrs = '') => `<td class="tools"><button type="button" data-act="del" data-tone="del" aria-label="${t.del}"${attrs}>×</button></td>`
 const pick = (name, values, cur) => `<fieldset class="switch">${values.map(v => `<label><input type="radio" name="${name}" value="${v}"${v === cur ? ' checked' : ''}><span>${t[v]}</span></label>`).join('')}</fieldset>`
 const row = (it = {}) => `<tr><td></td>${['description', 'qty', 'unit', 'total'].map(name => `<td>${control(name, it[name] || '')}</td>`).join('')}${tools()}</tr>`
 const pay = ({ stamp = Date.now(), note, amount } = {}) => `<tr><td></td><td><input type="hidden" name="stamp" value="${stamp}">${control('note', note)}</td><td>${date(stamp)}</td><td>${control('amount', amount || '')}</td>${tools()}</tr>`
-const ent = (e = {}, list = [], n = list.filter(r => r.entity_id === e.id).length, due = owed(list, e.id)) => `<tr><td>${e.id ? sn(e.id) : ''}</td><td><input type="hidden" name="ref" value="${e.id ?? ''}">${control('party', e.name)}</td><td><select name="kind" ${attr('kind')}>${opts(fields.kind.options.map(k => [k, t[k]]), e.kind || 'person')}</select></td><td>${digits(n)}</td><td>${control('debt', (e.debt || 0) + due, `min="${due}"`)}</td>${tools(n && e.name?.trim() ? ' disabled' : '')}</tr>`
+const ent = (e = {}, list = [], n = list.filter(r => r.entity_id === e.id).length, due = owed(list, e.id)) => `<tr><td>${e.id ? sn(e.id) : ''}</td><td><input type="hidden" name="ref" value="${e.id ?? ''}">${control('party', e.name)}</td><td><select name="kind" ${attr('kind')}>${opts(fields.kind.options.map(k => [k, t[k]]), e.kind || 'person')}</select></td><td>${digits(n)}</td><td>${control('debt', (e.debt || 0) + due, `min="${due}"`)}</td>${tools(n && e.name?.trim() && e.kind !== 'other' ? ' disabled' : '')}</tr>`
 
 export const lines = { items: row, pays: pay, entities: ent }
 
-const party = (r, entities, kind = r.kind ?? '', side = sideOf(r), e = entities.find(x => x.id === r.entity_id), name = r.party || e?.name || '', free = kind === 'other') => `<fieldset class="party"><select name="kind" required aria-invalid="${kind ? 'false' : 'true'}" aria-label="${t.kind}">${opts([['', t.kind], ...fields.kind.options.map(k => [k, t[k]])], kind)}</select><select name="entity" aria-invalid="${kind && !free && !e ? 'true' : 'false'}" aria-label="${ts(side, 'party')}"${kind && !free ? ' required' : ''}>${opts([['', t.pick], ...entities.filter(x => fit(x, kind, side)).map(x => [x.id, x.name || t.need])], r.entity_id ?? '')}</select>${input('party', free || e ? name : '', `placeholder="${ts(side, 'partyName')}"${free ? ` aria-invalid="${name ? 'false' : 'true'}" title="${name ? '' : t.need}"${name ? '' : ' required'}` : ' disabled'}`)}</fieldset>`
+const party = (r, entities, kind = r.kind ?? '', side = sideOf(r), e = entities.find(x => x.id === r.entity_id), name = r.party || e?.name || '', free = kind === 'other') => `<fieldset class="party"><select name="kind" required aria-invalid="${kind ? 'false' : 'true'}" aria-label="${t.kind}">${opts([['', t.kind], ...fields.kind.options.map(k => [k, t[k]])], kind)}</select>${free ? '' : entitySelect(entities, kind, side, e?.id)}${input('party', free || e ? name : '', `placeholder="${ts(side, 'partyName')}"${free ? ` aria-invalid="${name ? 'false' : 'true'}" title="${name ? '' : t.need}"${name ? '' : ' required'}` : ' disabled'}`)}</fieldset>`
 
 const editor = (r, list, entities, side = sideOf(r), sum = tally(r.items), paid = tally(r.payments, 'amount'), base = r.base ?? entities.find(e => e.id === r.entity_id)?.debt ?? 0) => `
   <form id="editor" class="doc" novalidate>
@@ -135,7 +137,7 @@ const team = (entities, list, role = 'buyer') => `
   <form id="entities" class="doc" novalidate>
     ${pick('role', ['buyer', 'seller'], role)}
     ${grid('entities', entities.filter(e => roleOf(e) === role).map(e => ent(e, list)).join(''), t.entities, role === 'seller' ? 'buy' : 'sale')}
-    <nav class="acts"><button class="primary">${t.save}</button></nav>
+    <nav class="acts"><button type="button" data-act="revert" data-tone="cancel">${t.cancel}</button><button class="primary">${t.save}</button></nav>
   </form>`
 
 const recent = list => [...new Set([...list.filter(r => r.opened).toSorted((a, b) => b.opened - a.opened), ...list])].slice(0, 3)

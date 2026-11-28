@@ -44,17 +44,26 @@ export const get = async id => {
 export const next = () => exec('SELECT coalesce(max(id), 0) + 1 id FROM records').then(([r]) => num(r.id))
 export const touch = id => exec('UPDATE records SET opened = ? WHERE id = ?', Date.now(), id)
 
+const recordSql = `INSERT INTO records (id, entity_id, party, at, side) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET entity_id = excluded.entity_id, party = excluded.party, side = excluded.side`
+const otherSql = `INSERT INTO records (id, entity_id, party, at, side) VALUES (?, (SELECT id FROM entities WHERE kind = 'other' AND ifnull(role, 'buyer') = ? AND trim(name) = ? ORDER BY id LIMIT 1), ?, ?, ?) ON CONFLICT (id) DO UPDATE SET entity_id = excluded.entity_id, party = excluded.party, side = excluded.side`
+const ensureSql = `INSERT INTO entities (name, kind, debt, role) SELECT ?, 'other', 0, ? WHERE NOT EXISTS (SELECT 1 FROM entities WHERE kind = 'other' AND ifnull(role, 'buyer') = ? AND trim(name) = ?)`
+
 export const save = async r => {
   const want = roles[r.side || 'sale']
-  const [hit] = r.entity_id ? await exec(`SELECT ifnull(role, 'buyer') role FROM entities WHERE id = ?`, r.entity_id) : []
+  const other = r.kind === 'other' && r.party
+  const [hit] = other || !r.entity_id ? [] : await exec(`SELECT ifnull(role, 'buyer') role FROM entities WHERE id = ?`, r.entity_id)
   if (hit && hit.role !== want) throw new Error(t.mismatch)
+  const record = other
+    ? [otherSql, [r.id, want, r.party, r.party, r.at, r.side || 'sale']]
+    : [recordSql, [r.id, r.entity_id, r.party || null, r.at, r.side || 'sale']]
   return call('tx', [
-  ['INSERT INTO records (id, entity_id, party, at, side) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET entity_id = excluded.entity_id, party = excluded.party, side = excluded.side', [r.id, r.entity_id, r.party || null, r.at, r.side || 'sale']],
-  ...(r.entity_id && r.party ? [['UPDATE entities SET name = ? WHERE id = ?', [r.party, r.entity_id]]] : []),
-  ...['items', 'payments'].map(k => [`DELETE FROM ${k} WHERE record_id = ?`, [r.id]]),
-  ...r.items.map((it, n) => ['INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)', [r.id, n, it.description, it.qty, it.unit, it.total]]),
-  ...r.payments.map((p, n) => ['INSERT INTO payments VALUES (?, ?, ?, ?, ?)', [r.id, n, p.amount, p.stamp, p.note]]),
-])
+    ...(other ? [[ensureSql, [r.party, want, want, r.party]]] : []),
+    record,
+    ...(!other && r.entity_id && r.party ? [['UPDATE entities SET name = ? WHERE id = ?', [r.party, r.entity_id]]] : []),
+    ...['items', 'payments'].map(k => [`DELETE FROM ${k} WHERE record_id = ?`, [r.id]]),
+    ...r.items.map((it, n) => ['INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)', [r.id, n, it.description, it.qty, it.unit, it.total]]),
+    ...r.payments.map((p, n) => ['INSERT INTO payments VALUES (?, ?, ?, ?, ?)', [r.id, n, p.amount, p.stamp, p.note]]),
+  ])
 }
 
 export const cancel = id => exec('UPDATE records SET cancelled = NOT ifnull(cancelled, 0) WHERE id = ?', id)

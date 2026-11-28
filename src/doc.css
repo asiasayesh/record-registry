@@ -70,6 +70,9 @@
     border: 0;
     border-radius: var(--r-sm);
     background: var(--bg);
+    &:not(:has(select[name="entity"])) {
+      grid-template-columns: max-content minmax(0, 1fr);
+    }
     & :is(select[name="kind"], select[name="entity"]) {
       width: max-content;
       min-width: max-content;
@@ -83,16 +86,12 @@
       }
     }
   }
-  &:has(.party select[name="kind"] :checked[value="other"]):has(
-      .party select[name="entity"] :checked[value=""]
-    )
-    .due:has([name="prior"], [name="debt"]) {
-    display: none;
-  }
   &
     :is(td, .party)
     :is(input, select):is(:user-invalid, [aria-invalid="true"]) {
-    border-color: light-dark(oklch(55% 0.24 25), oklch(70% 0.2 25));
+    --border-color: light-dark(oklch(55% 0.24 25), oklch(70% 0.2 25));
+    border-color: var(--border-color);
+    border-width: 2px;
     background: light-dark(oklch(96% 0.04 25), oklch(28% 0.08 25));
   }
   & table {
@@ -106,11 +105,9 @@
     counter-reset: row;
   }
   & select {
-    /* min-width: 7.5rem; */
-    /* padding-inline: 12px 2.2rem; */
-    &,
     &::picker(select) {
       appearance: base-select;
+      align-items: center;
     }
     &::picker(select) {
       border: 1px solid var(--edge);
@@ -156,7 +153,8 @@
   & tbody tr:nth-child(even) {
     background: var(--bg);
   }
-  & :is(th, td):nth-child(n + 4) {
+  & :is(th, td):nth-child(n + 4),
+  &.items :is(th, td):nth-child(3) {
     text-align: end;
     font-variant-numeric: tabular-nums;
   }
@@ -214,7 +212,6 @@
     }
   }
   & .entities {
-    table-layout: fixed;
     & td:first-child:not(:empty) {
       color: var(--muted);
       font-variant-numeric: tabular-nums;
@@ -223,22 +220,22 @@
       width: 3.4em;
     }
     & :is(th, td):nth-child(2) {
-      width: auto;
+      width: 100%;
       min-width: 0;
     }
-    & :is(th, td):nth-child(3) {
-      width: 8.6rem;
+    & :is(th, td):nth-child(3),
+    & :is(th, td):nth-child(4) {
+      width: max-content;
+      white-space: nowrap;
     }
     & select[name="kind"] {
       width: max-content;
       min-width: max-content;
       field-sizing: content;
     }
-    & :is(th, td):nth-child(4) {
-      width: 3.6rem;
-    }
     & :is(th, td):nth-child(5) {
-      width: 7.5rem;
+      width: 16rem;
+      min-width: 16rem;
     }
     & :is(th, td):last-child {
       width: 2.6rem;
@@ -251,9 +248,10 @@
       border-color: color-mix(in oklab, var(--ink) 11%, transparent);
       background: color-mix(in oklab, var(--ink) 4.5%, transparent);
       &:focus {
-        border-color: var(--accent);
+        border: none;
+        /* border-color: var(--accent); */
         background: var(--surface);
-        outline: 2px solid var(--accent);
+        outline: 2px solid var(--border-color);
         outline-offset: 1px;
       }
     }
@@ -287,6 +285,31 @@
     & svg {
       width: 18px;
       height: 18px;
+    }
+    &:not([data-tone]) {
+      --tone: var(--credit);
+      background: light-dark(
+        oklch(96% 0.022 var(--tone)),
+        oklch(24% 0.03 var(--tone))
+      );
+      color: light-dark(
+        oklch(40% 0.07 var(--tone)),
+        oklch(84% 0.05 var(--tone))
+      );
+      border-color: color-mix(
+        in oklch,
+        oklch(48% 0.1 var(--tone)) 45%,
+        transparent
+      );
+      @media (hover: hover) {
+        &:hover {
+          background: light-dark(
+            oklch(93% 0.04 var(--tone)),
+            oklch(28% 0.045 var(--tone))
+          );
+          border-color: oklch(48% 0.1 var(--tone));
+        }
+      }
     }
     &[data-tone] {
       background: var(--tone-soft);
@@ -350,7 +373,8 @@
       white-space: nowrap;
     }
     & :is(th, td):nth-child(4) {
-      width: 5rem;
+      width: 16rem;
+      min-width: 16rem;
     }
     & :is(th, td):last-child {
       width: 2.6rem;
@@ -361,7 +385,7 @@
     justify-content: end;
     gap: 8px;
     margin-block-start: 8px;
-    & a[data-tone="cancel"] {
+    & :is(a[data-tone="cancel"], button[data-act="cancel"]) {
       order: -1;
       margin-inline-end: auto;
     }

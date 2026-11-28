@@ -10,7 +10,7 @@
   --ink: light-dark(oklch(14.5% 0.004 250), oklch(96% 0.004 250));
   --muted: light-dark(oklch(48% 0.008 250), oklch(70% 0.008 250));
   --bg: light-dark(oklch(98.2% 0.002 250), oklch(0% 0 0));
-  --surface: light-dark(oklch(100% 0 0), oklch(12.5% 0.004 250));
+  --surface: light-dark(oklch(0.96 0 0), oklch(12.5% 0.004 250));
   --edge: light-dark(oklch(91.5% 0.004 250), oklch(27% 0.005 250));
   --accent: light-dark(oklch(15% 0.006 250), oklch(98% 0.004 250));
   --accent-soft: light-dark(oklch(91% 0.004 250), oklch(22% 0.006 250));
@@ -20,8 +20,8 @@
     color-mix(in oklab, var(--ink) 8%, black)
   );
   --seg-line: light-dark(
-    color-mix(in oklab, var(--ink) 16%, var(--edge)),
-    color-mix(in oklab, var(--ink) 28%, black)
+    color-mix(in oklab, var(--ink) 40%, var(--edge)),
+    color-mix(in oklab, var(--ink) 40%, black)
   );
   --seg-idle: light-dark(
     var(--surface),
@@ -35,7 +35,7 @@
   --shadow: 0 1px 2px light-dark(oklch(0% 0 0 / 5%), oklch(0% 0 0 / 40%));
   --r: 8px;
   --r-sm: 6px;
-  --h: 32px;
+  --h: 26px;
   color-scheme: light dark;
   accent-color: var(--accent);
   font:
@@ -54,7 +54,8 @@
   [data-palette="blue"],
   [data-palette="sea"],
   [data-palette="green"],
-  [data-palette="plum"]
+  [data-palette="plum"],
+  [data-palette="rose"]
 ) {
   --accent: oklch(calc(var(--accent-l) * 1%) var(--accent-c) var(--hue));
   --accent-soft: light-dark(
@@ -100,6 +101,11 @@
   --hue: 305;
   --accent-l: 48;
   --accent-c: 0.09;
+}
+:is(:root, .swatches button)[data-palette="rose"] {
+  --hue: 348;
+  --accent-l: 48;
+  --accent-c: 0.13;
 }
 
 [data-theme="light"] {
@@ -151,7 +157,8 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: none;
+  /* outline: 2px solid var(--accent); */
   outline-offset: 2px;
 }
 
@@ -186,6 +193,10 @@ input[type="number"] {
   appearance: textfield;
   font-variant-numeric: tabular-nums;
 }
+input[data-num] {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
 
 button,
 .btn {
@@ -193,6 +204,7 @@ button,
   place-items: center;
   height: var(--h);
   padding-inline: 14px;
+  border-width: 2px;
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
@@ -222,13 +234,28 @@ button,
       }
     }
     &[data-dirty] {
-      background: light-dark(oklch(78% 0.16 85), oklch(72% 0.14 85));
-      border-color: light-dark(oklch(62% 0.14 85), oklch(72% 0.14 85));
-      color: oklch(22% 0.05 85);
+      background: light-dark(
+        oklch(78% 0.16 var(--credit)),
+        oklch(42% 0.1 var(--credit))
+      );
+      border-color: light-dark(
+        oklch(52% 0.12 var(--credit)),
+        oklch(42% 0.1 var(--credit))
+      );
+      color: light-dark(
+        oklch(22% 0.05 var(--credit)),
+        oklch(96% 0.02 var(--credit))
+      );
       @media (hover: hover) {
         &:hover:not(:disabled) {
-          background: light-dark(oklch(72% 0.16 85), oklch(66% 0.14 85));
-          border-color: light-dark(oklch(62% 0.14 85), oklch(66% 0.14 85));
+          background: light-dark(
+            oklch(72% 0.16 var(--credit)),
+            oklch(36% 0.1 var(--credit))
+          );
+          border-color: light-dark(
+            oklch(48% 0.12 var(--credit)),
+            oklch(36% 0.1 var(--credit))
+          );
         }
       }
     }
@@ -243,23 +270,13 @@ button,
       }
     }
   }
-  &:is([data-tone="del"], [data-tone="cancel"]:not([aria-pressed="true"])) {
+  &:is([data-tone="del"], [data-tone="cancel"]:not([aria-pressed])) {
     background: transparent;
     border-color: transparent;
     @media (hover: hover) {
       &:hover:not(:disabled) {
         background: var(--tone-soft);
         border-color: var(--tone-solid);
-      }
-    }
-  }
-  &[data-tone="cancel"][aria-pressed="true"] {
-    background: var(--tone-solid);
-    color: var(--on-accent);
-    border-color: var(--tone-solid);
-    @media (hover: hover) {
-      &:hover:not(:disabled) {
-        background: color-mix(in oklab, var(--tone-solid), black 12%);
       }
     }
   }
@@ -324,11 +341,11 @@ button,
     grid-auto-flow: column;
     gap: 6px;
     border-width: 2px;
-    border-radius: 999px;
+    border-radius: var(--r);
     font-weight: 700;
-    background: oklch(58% 0.19 145);
-    color: oklch(98% 0.02 145);
-    border-color: oklch(42% 0.14 145);
+    background: var(--tone-soft);
+    color: var(--tone-ink);
+    border-color: color-mix(in oklch, var(--tone-solid) 55%, transparent);
     &::before {
       content: "+";
       font-size: 1.2em;
@@ -336,9 +353,12 @@ button,
     }
     @media (hover: hover) {
       &:hover {
-        background: oklch(50% 0.19 145);
-        border-color: oklch(38% 0.14 145);
-        color: oklch(98% 0.02 145);
+        background: light-dark(
+          oklch(93% 0.04 var(--tone)),
+          oklch(30% 0.05 var(--tone))
+        );
+        border-color: var(--tone-solid);
+        color: var(--tone-ink);
       }
     }
   }
@@ -363,7 +383,7 @@ button,
     font-weight: 800;
     box-shadow: 0 1px 2px oklch(0% 0 0 / 45%);
   }
-  & [data-act="theme"] {
+  & :is([data-act="theme"], [commandfor="settings"]) {
     width: var(--h);
     padding: 0;
     border-radius: 50%;
@@ -371,6 +391,8 @@ button,
       width: 16px;
       height: 16px;
     }
+  }
+  & [data-act="theme"] {
     & .moon {
       display: none;
     }
@@ -747,7 +769,8 @@ dialog {
       field-sizing: content;
     }
     & input[name="debt"] {
-      width: 11rem;
+      min-width: 16rem;
+      field-sizing: content;
     }
   }
 }
@@ -758,9 +781,9 @@ dialog {
   padding: 20px;
   & form {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) max-content;
     align-items: center;
-    gap: 14px 24px;
+    gap: 12px 16px;
   }
   & h2 {
     grid-column: 1 / -1;
@@ -792,12 +815,13 @@ dialog {
     color: var(--muted);
   }
   & .swatches {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: repeat(4, 22px);
+    gap: 6px;
+    width: max-content;
     & button {
-      width: 28px;
-      height: 28px;
+      width: 22px;
+      height: 22px;
       padding: 0;
       border: 1px solid color-mix(in oklch, var(--ink) 16%, transparent);
       border-radius: 50%;
@@ -810,6 +834,37 @@ dialog {
       &[aria-pressed="true"] {
         outline: 2px solid var(--ink);
         outline-offset: 3px;
+      }
+    }
+  }
+}
+
+#ask {
+  width: min(22rem, 100% - 32px);
+  margin: auto;
+  padding: 20px;
+  & h2 {
+    font-size: 1.05em;
+    font-weight: 700;
+  }
+  & p {
+    margin-block-start: 8px;
+    color: var(--muted);
+  }
+  & form {
+    display: flex;
+    justify-content: end;
+    gap: 8px;
+    margin-block-start: 16px;
+  }
+  & [value="ok"] {
+    background: var(--tone-solid);
+    color: var(--on-accent);
+    border-color: var(--tone-solid);
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        background: color-mix(in oklab, var(--tone-solid), black 12%);
+        border-color: color-mix(in oklab, var(--tone-solid), black 12%);
       }
     }
   }

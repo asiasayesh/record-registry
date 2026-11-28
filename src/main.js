@@ -1,9 +1,9 @@
 import '@/style.css'
 import '@/doc.css'
 import '@/print.css'
-import { t, setLang, lang, ascii, toNum, num } from '@/i18n.js'
-import { fields, fit } from '@/fields.js'
-import { h, history, record, screen, lines, paper, balance, owed, opts } from '@/view.js'
+import { t, setLang, lang, ascii, toNum, num, grouped } from '@/i18n.js'
+import { fields, fit, roleOf, roles } from '@/fields.js'
+import { h, history, record, screen, lines, paper, balance, owed, opts, entitySelect } from '@/view.js'
 import * as db from '@/store.js'
 
 const $ = s => document.querySelector(s)
@@ -64,7 +64,9 @@ const item = tr => Object.fromEntries([...tr.querySelectorAll('input, select')].
 const ent = id => state.entities.find(e => e.id === id) ?? {}
 const sideOf = form => form.side?.value || 'sale'
 
-const read = (form, kind = form.kind.value, side = sideOf(form), e = ent(toNum(form.entity.value)), hit = fit(e, kind, side), typed = form.party.value.trim()) => ({
+const otherOf = (side, name) => name && state.entities.filter(e => e.kind === 'other' && roleOf(e) === roles[side] && (e.name ?? '').trim() === name).toSorted((a, b) => a.id - b.id)[0]
+const linked = form => form.kind.value === 'other' ? otherOf(sideOf(form), form.party.value.trim()) : ent(toNum(form.entity?.value))
+const read = (form, kind = form.kind.value, side = sideOf(form), e = linked(form), hit = kind === 'other' ? !!e?.id : fit(e, kind, side), typed = form.party.value.trim()) => ({
   id: toNum(form.serial.value),
   entity_id: hit ? e.id : null,
   party: typed || (hit ? e.name : ''),
@@ -76,13 +78,13 @@ const read = (form, kind = form.kind.value, side = sideOf(form), e = ent(toNum(f
   payments: rows(form, 'pays').map(item).filter(p => p.amount),
 })
 
-const auto = tr => cell(tr, 'total').value = toNum(cell(tr, 'qty').value) * toNum(cell(tr, 'unit').value) || ''
+const auto = (tr, n = toNum(cell(tr, 'qty').value) * toNum(cell(tr, 'unit').value)) => cell(tr, 'total').value = n ? num(n) : ''
 const tally = (form, k, name) => rows(form, k).reduce((s, tr) => s + toNum(cell(tr, name).value), 0)
 const put = (out, v) => (out.value = num(v), out.dataset.owe = v > 0)
 const cap = (form, sum, paid) => rows(form, 'pays').map(tr => cell(tr, 'amount')).map(i => i.max = Math.max(0, sum - paid + toNum(i.value)))
-const recalc = (form, sum = tally(form, 'items', 'total'), paid = tally(form, 'pays', 'amount')) => (
+const recalc = (form, sum = tally(form, 'items', 'total'), paid = tally(form, 'pays', 'amount'), e = linked(form)) => (
   cap(form, sum, paid),
-  Object.entries({ sum, ...balance(state.list, { id: toNum(form.serial.value), entity_id: toNum(form.entity.value) }, sum, paid, ent(toNum(form.entity.value)).debt) })
+  Object.entries({ sum, ...balance(state.list, { id: toNum(form.serial.value), entity_id: e?.id ?? null }, sum, paid, e?.debt) })
     .map(([k, v]) => put(form[k], v))
 )
 const sheet = r => r && ($('#sheet').innerHTML = paper(r))
@@ -90,18 +92,33 @@ const draft = (form = $('#editor')) => form && read(form)
 
 const download = (bytes, name) => Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([bytes])), download: name }).click()
 
-const restore = async (file, mode) => file && confirm(t[`${mode}Ask`]) && (
+const ask = ({ title, body, ok }, dlg = $('#ask')) => (
+  $('#ask-title').textContent = title,
+  $('#ask-body').textContent = body,
+  dlg.querySelector('[value=ok]').textContent = ok,
+  dlg.returnValue = '',
+  dlg.showModal(),
+  new Promise(resolve => {
+    const finish = yes => finish.done || (finish.done = true, resolve(yes))
+    dlg.onclose = () => finish(dlg.returnValue === 'ok')
+    dlg.querySelector('form').onsubmit = e => (e.preventDefault(), e.stopPropagation(), finish(e.submitter?.value === 'ok'), queueMicrotask(() => dlg.open && dlg.close()))
+  })
+)
+const restore = async (file, mode) => file && await ask({ title: t[mode], body: t[`${mode}Ask`], ok: t[mode] }) && (
   await db.load(new Uint8Array(await file.arrayBuffer()), mode),
   await reload(),
   $('#settings').close(),
   location.hash = '#/'
 )
 
-const tune = (form, kind = form.kind.value, side = sideOf(form), e = ent(toNum(form.entity.value)), ok = fit(e, kind, side), free = kind === 'other') => (
-  form.entity.innerHTML = opts([['', t.pick], ...state.entities.filter(x => fit(x, kind, side)).map(x => [x.id, x.name || t.need])], ok ? e.id : ''),
+const options = (kind, side, id) => opts([['', t.pick], ...state.entities.filter(x => fit(x, kind, side)).map(x => [x.id, x.name || t.need])], id ?? '')
+const slot = (form, kind, side, id) => form.entity
+  ? (form.entity.innerHTML = options(kind, side, id), form.entity.required = !!kind)
+  : form.kind.insertAdjacentHTML('afterend', entitySelect(state.entities, kind, side, id))
+const tune = (form, kind = form.kind.value, side = sideOf(form), free = kind === 'other', e = ent(toNum(form.entity?.value)), ok = fit(e, kind, side)) => (
+  free ? form.entity?.remove() : slot(form, kind, side, ok ? e.id : ''),
   form.party.disabled = !free,
-  (ok || !free) && (form.party.value = (ok && e.name) || ''),
-  form.entity.required = !!kind && !free,
+  free || (form.party.value = (ok && e.name) || ''),
   form.party.required = free,
   hint(form.entity),
   hint(form.party)
@@ -126,16 +143,18 @@ const acts = {
     body.lastElementChild.querySelector('input:not([type=hidden])').focus(),
     dirty(form)
   ),
-  del: (el, form = el.form, tr = el.closest('tr'), ref = toNum(tr.querySelector('[name=ref]')?.value)) => (
-    tr.remove(),
-    form.id === 'editor' && recalc(form),
-    dirty(form),
-    ref && form.id === 'entities' && db.drop(ref).then(() => (cache.record = '', reload(), toast('credit', t.saved)), err => toast('del', err.message))
-  ),
+  del: async (el, form = el.form, tr = el.closest('tr'), ref = toNum(tr.querySelector('[name=ref]')?.value)) =>
+    await ask({ title: tr.querySelector('[name=party], [name=description], [name=note]')?.value.trim() || t.del, body: t.delAsk, ok: t.del }) && (
+      tr.remove(),
+      form.id === 'editor' && recalc(form),
+      dirty(form),
+      ref && form.id === 'entities' && db.drop(ref).then(() => (cache.record = '', reload(), toast('credit', t.saved)), err => toast('del', err.message))
+    ),
+  revert: ({ form }) => form?.id === 'entities' && (cache.record = '', paint()),
   print: async ({ dataset: { id } }) => (sheet(id ? await db.get(+id) : state.cur ?? draft()), print()),
   cancel: async ({ dataset: { id } }) => (await db.cancel(+id), await route()),
   backup: async () => download(await db.dump(), `tx-ledger-${new Date().toLocaleDateString('sv')}.sqlite3`),
-  wipe: async () => confirm(t.wipeAsk) && confirm(t.wipeAgain) && (await db.wipe(), await reload(), $('#settings').close(), location.hash = '#/', toast('credit', t.wipe)),
+  wipe: async () => await ask({ title: t.wipeAsk, body: t.wipeAgain, ok: t.wipe }) && (await db.wipe(), await reload(), $('#settings').close(), location.hash = '#/', toast('credit', t.wipe)),
   lang: () => (state.edit && (state.edit = read($('#editor'))), setLang(t.next), paint()),
   theme: () => setTheme(tone() === 'dark' ? 'light' : 'dark'),
   palette: ({ dataset: { palette } }) => setPalette(palette),
@@ -150,7 +169,8 @@ const setPalette = (s, buttons = [...document.querySelectorAll('[data-act=palett
 
 const controls = root => [...root.querySelectorAll('input:not([type=hidden]):not([readonly]), select')]
 const empty = i => fields[i.name]?.gt ? !(toNum(i.value) > 0) : !i.value.trim()
-const hint = i => i?.setCustomValidity && (i.setCustomValidity(i.required && empty(i) ? t.need : ''), i.ariaInvalid = `${!i.validity.valid}`, i.title = i.validity.valid ? '' : t.need)
+const span = i => i.matches?.('[data-num]') && i.value !== '' && ((i.max !== '' && toNum(i.value) > +i.max) || (i.min !== '' && toNum(i.value) < +i.min))
+const hint = i => i?.setCustomValidity && (i.setCustomValidity(i.required && empty(i) || span(i) ? t.need : ''), i.ariaInvalid = `${!i.validity.valid}`, i.title = i.validity.valid ? '' : t.need)
 const gate = root => (els => (els.map(hint), els.every(i => i.validity.valid || i.reportValidity())))(controls(root))
 const relax = el => ['editor', 'entities', 'born'].includes(el.form?.id) && hint(el)
 
@@ -185,8 +205,11 @@ const submits = {
   },
 }
 
+const place = (el, next, keep = ascii(el.value.slice(0, el.selectionStart ?? 0)).replace(/\D/g, '').length, seen = { n: 0 }, at = [...next].findIndex(c => /\d/.test(ascii(c)) && ++seen.n === keep)) => (el.value = next, el.selectionStart = el.selectionEnd = keep ? at < 0 ? next.length : at + 1 : 0)
+const mask = el => el.matches?.('input[data-num]:not([readonly])') && grouped(el.value) !== el.value && place(el, grouped(el.value))
 addEventListener('beforeinput', e => e.target.type === 'number' && /[۰-۹٠-٩٫,]/.test(e.data ?? '') && (e.preventDefault(), e.target.value = ascii(e.target.value + e.data).replace(/[,٬]/g, '').replace('٫', '.'), e.target.dispatchEvent(new Event('input', { bubbles: true }))))
-addEventListener('input', e => (relax(e.target), inputs[e.target.form?.id]?.(e), e.target.name === 'role' || dirty(e.target.form)))
+addEventListener('beforeinput', e => e.target.matches?.('input[data-num]:not([readonly])') && e.data && !/delete|history/i.test(e.inputType) && ![...e.data].some(c => /[\d۰-۹٠-٩٫.]/.test(c)) && e.preventDefault())
+addEventListener('input', e => (mask(e.target), inputs[e.target.form?.id]?.(e), relax(e.target), e.target.name === 'role' || dirty(e.target.form)))
 $('#screen').onclose = () => state.born ? location.hash = '#/entities' : state.edit && (location.hash = state.edit.fresh ? '#/' : `#/${state.edit.id}`)
 addEventListener('invalid', e => e.target.ariaInvalid = 'true', true)
 const act = el => acts[el?.dataset.act]?.(el)
@@ -195,7 +218,7 @@ const grab = e => e.target.matches(pick) && e.target.select()
 addEventListener('focusin', grab)
 addEventListener('mouseup', e => e.target.matches(pick) && e.preventDefault())
 addEventListener('click', e => (grab(e), act(e.target.closest('[data-act]'))))
-addEventListener('submit', e => (e.preventDefault(), submits[e.target.id]?.(e)))
+addEventListener('submit', e => e.target.method === 'dialog' || (e.preventDefault(), submits[e.target.id]?.(e)))
 addEventListener('hashchange', route)
 addEventListener('beforeprint', () => $('#sheet').childElementCount || sheet(state.cur ?? draft()))
 addEventListener('afterprint', () => $('#sheet').replaceChildren())

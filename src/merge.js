@@ -38,3 +38,46 @@ const put = (db, src, linked, r, id = num(r.id)) => (
 )
 
 export const absorb = (db, src, linked = link(db, src.entities)) => src.records.map(r => put(db, src, linked, r))
+
+const linkSql = `
+DROP TABLE IF EXISTS other_keep;
+UPDATE entities SET name = trim(name) WHERE kind = 'other' AND name IS NOT NULL AND name != trim(name);
+CREATE TEMP TABLE other_keep AS
+SELECT min(id) id, name, ifnull(role, 'buyer') role, sum(ifnull(debt, 0)) debt
+FROM entities
+WHERE kind = 'other' AND name IS NOT NULL AND trim(name) != ''
+GROUP BY name, ifnull(role, 'buyer');
+UPDATE entities SET debt = (SELECT debt FROM other_keep WHERE other_keep.id = entities.id)
+WHERE id IN (SELECT id FROM other_keep);
+UPDATE records SET entity_id = (
+  SELECT k.id FROM other_keep k
+  JOIN entities cur ON cur.id = records.entity_id
+  WHERE cur.kind = 'other' AND cur.name = k.name AND ifnull(cur.role, 'buyer') = k.role
+)
+WHERE entity_id IN (SELECT id FROM entities WHERE kind = 'other' AND name IS NOT NULL AND trim(name) != '');
+DELETE FROM entities
+WHERE kind = 'other' AND name IS NOT NULL AND trim(name) != ''
+AND id NOT IN (SELECT id FROM other_keep);
+DROP TABLE other_keep;`
+
+const adoptSql = `
+INSERT INTO entities (name, kind, debt, role)
+SELECT DISTINCT trim(r.party), 'other', 0,
+  CASE ifnull(r.side, 'sale') WHEN 'buy' THEN 'seller' ELSE 'buyer' END
+FROM records r
+WHERE r.entity_id IS NULL AND r.party IS NOT NULL AND trim(r.party) != ''
+AND NOT EXISTS (
+  SELECT 1 FROM entities e
+  WHERE e.kind = 'other' AND e.name = trim(r.party)
+  AND ifnull(e.role, 'buyer') = CASE ifnull(r.side, 'sale') WHEN 'buy' THEN 'seller' ELSE 'buyer' END
+);
+UPDATE records SET entity_id = (
+  SELECT e.id FROM entities e
+  WHERE e.kind = 'other' AND e.name = trim(records.party)
+  AND ifnull(e.role, 'buyer') = CASE ifnull(records.side, 'sale') WHEN 'buy' THEN 'seller' ELSE 'buyer' END
+  ORDER BY e.id LIMIT 1
+)
+WHERE entity_id IS NULL AND party IS NOT NULL AND trim(party) != '';`
+
+export const linkOthers = db => db.exec(linkSql)
+export const adoptOthers = db => db.exec(adoptSql)
