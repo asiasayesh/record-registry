@@ -1,123 +1,376 @@
 .doc {
-  display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; width: 100%; max-width: 60rem; margin-inline: auto; padding: 28px;
-  background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r); box-shadow: var(--shadow);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 60rem;
+  margin-inline: auto;
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
   & > header {
-    display: grid; grid-template-columns: 1fr auto; grid-template-areas: "brand logo" "meta meta";
-    align-items: start; gap: 16px 24px; padding-block-end: 16px;
-    &:has(.switch) { grid-template-areas: "brand logo" "switch switch" "meta meta" }
-    & .switch { grid-area: switch }
-  }
-  & .switch { margin: 0 }
-  & hgroup { grid-area: brand; & h1 { font-size: 1.7em; font-weight: 700; line-height: 1.3 } & p { color: var(--muted) } }
-  & header img { grid-area: logo; width: 56px; justify-self: end }
-  & dl {
-    grid-area: meta; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 28px;
-    & div { display: flex; align-items: center; gap: 8px }
-    & dt { color: var(--muted) }
-    & input { width: 8rem }
-  }
-  & .party {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 12px; border: 0; border-radius: var(--r-sm); background: var(--bg);
-    & select[name=kind] { flex: 0 0 auto; width: auto; min-width: 8.5rem }
-    & :is(select[name=entity], input) { flex: 1; min-width: 8rem }
-    & select[name=entity] { min-width: 14rem }
-    &:not([data-open]):not(:has([value=other]:checked)) input,
-    &:not([data-open]):has(select[name=entity] :checked:not([value=""])) input { display: none }
-  }
-  &:has(.party select[name=kind] :checked[value=other]):has(.party select[name=entity] :checked[value=""]) .due:has([name=prior], [name=debt]) { display: none }
-  & :is(td, .party) :is(input, select):is(:user-invalid, [aria-invalid=true]) { border-color: light-dark(oklch(55% .24 25), oklch(70% .2 25)); background: light-dark(oklch(96% .04 25), oklch(28% .08 25)) }
-  & table { width: 100%; border-spacing: 0; border: 0; border-radius: var(--r-sm); overflow: clip }
-  & tbody { counter-reset: row }
-  & select {
-    min-width: 7.5rem; padding-inline: 12px 2.2rem;
-    &, &::picker(select) { appearance: base-select }
-    &::picker(select) { border: 1px solid var(--edge); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); padding: 4px; box-shadow: var(--shadow) }
-    &::picker-icon { color: var(--muted) }
-    & option {
-      padding: 8px 12px; border-radius: 8px;
-      &:is(:hover, :focus) { background: var(--bg) }
-      &:checked { background: var(--accent-soft); font-weight: 700 }
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "brand logo" "meta meta";
+    align-items: start;
+    gap: 16px 24px;
+    padding-block-end: 16px;
+    &:has(.switch) {
+      grid-template-areas: "brand logo" "switch switch" "meta meta";
+    }
+    & .switch {
+      grid-area: switch;
     }
   }
-  & caption { padding-block-end: 6px; text-align: start; font-weight: 600; color: var(--muted) }
-  & th { padding: 6px 8px; text-align: start; white-space: nowrap; font-size: .85em; font-weight: 600; color: var(--muted); background: var(--bg) }
-  & td { padding: 6px 8px }
-  & tbody tr:nth-child(even) { background: var(--bg) }
-  & :is(th, td):nth-child(n+4) { text-align: end; font-variant-numeric: tabular-nums }
-  & :is(th, td):nth-child(2) { width: 40% }
+  & .switch {
+    margin: 0;
+  }
+  & hgroup {
+    grid-area: brand;
+    & h1 {
+      font-size: 1.7em;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    & p {
+      color: var(--muted);
+    }
+  }
+  & header img {
+    grid-area: logo;
+    width: 56px;
+    justify-self: end;
+  }
+  & dl {
+    grid-area: meta;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 28px;
+    & div {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    & dt {
+      color: var(--muted);
+    }
+    & input {
+      width: 8rem;
+    }
+  }
+  & .party {
+    display: grid;
+    grid-template-columns: max-content max-content minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: var(--bg);
+    & :is(select[name="kind"], select[name="entity"]) {
+      width: max-content;
+      min-width: max-content;
+      field-sizing: content;
+    }
+    & input {
+      width: 100%;
+      &:disabled {
+        color: var(--muted);
+        cursor: default;
+      }
+    }
+  }
+  &:has(.party select[name="kind"] :checked[value="other"]):has(
+      .party select[name="entity"] :checked[value=""]
+    )
+    .due:has([name="prior"], [name="debt"]) {
+    display: none;
+  }
+  &
+    :is(td, .party)
+    :is(input, select):is(:user-invalid, [aria-invalid="true"]) {
+    border-color: light-dark(oklch(55% 0.24 25), oklch(70% 0.2 25));
+    background: light-dark(oklch(96% 0.04 25), oklch(28% 0.08 25));
+  }
+  & table {
+    width: 100%;
+    border-spacing: 0;
+    border: 0;
+    border-radius: var(--r-sm);
+    overflow: clip;
+  }
+  & tbody {
+    counter-reset: row;
+  }
+  & select {
+    /* min-width: 7.5rem; */
+    /* padding-inline: 12px 2.2rem; */
+    &,
+    &::picker(select) {
+      appearance: base-select;
+    }
+    &::picker(select) {
+      border: 1px solid var(--edge);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      color: var(--ink);
+      padding: 4px;
+      box-shadow: var(--shadow);
+    }
+    &::picker-icon {
+      color: var(--muted);
+    }
+    & option {
+      padding: 8px 12px;
+      border-radius: 8px;
+      &:is(:hover, :focus) {
+        background: var(--bg);
+      }
+      &:checked {
+        background: var(--accent-soft);
+        font-weight: 700;
+      }
+    }
+  }
+  & caption {
+    padding-block-end: 6px;
+    text-align: start;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  & th {
+    padding: 6px 8px;
+    text-align: start;
+    white-space: nowrap;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--bg);
+  }
+  & td {
+    padding: 6px 8px;
+  }
+  & tbody tr:nth-child(even) {
+    background: var(--bg);
+  }
+  & :is(th, td):nth-child(n + 4) {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+  & :is(th, td):nth-child(2) {
+    width: 40%;
+  }
   & :is(table, .add)[data-tone] {
-    --tone-soft: light-dark(oklch(97.4% 0.01 var(--tone)), oklch(16% 0.012 var(--tone)));
-    --tone-ink: light-dark(oklch(44% 0.025 var(--tone)), oklch(76% 0.02 var(--tone)));
-    --tone-solid: light-dark(oklch(82% 0.016 var(--tone)), oklch(34% 0.018 var(--tone)));
+    --tone-soft: light-dark(
+      oklch(97.4% 0.01 var(--tone)),
+      oklch(16% 0.012 var(--tone))
+    );
+    --tone-ink: light-dark(
+      oklch(44% 0.025 var(--tone)),
+      oklch(76% 0.02 var(--tone))
+    );
+    --tone-solid: light-dark(
+      oklch(82% 0.016 var(--tone)),
+      oklch(34% 0.018 var(--tone))
+    );
   }
   & table[data-tone] {
-    border-start-start-radius: 0; border-end-start-radius: 0;
-    & :is(th, caption) { color: var(--tone-ink) }
-    & th { background: var(--tone-soft) }
-    & tbody tr:nth-child(even) { background: color-mix(in oklab, var(--tone-soft) 35%, transparent) }
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+    & :is(th, caption) {
+      color: var(--tone-ink);
+    }
+    & th {
+      background: var(--tone-soft);
+    }
+    & tbody tr:nth-child(even) {
+      background: color-mix(in oklab, var(--tone-soft) 35%, transparent);
+    }
   }
   & .pays td:nth-child(4) {
-    white-space: nowrap; text-align: end;
-    &::before { content: "+"; margin-inline-end: 4px; color: var(--tone-ink); font-weight: 800 }
-    & input { width: calc(100% - 1.2rem) }
+    white-space: nowrap;
+    text-align: end;
+    &::before {
+      content: "+";
+      margin-inline-end: 4px;
+      color: var(--tone-ink);
+      font-weight: 800;
+    }
+    & input {
+      width: calc(100% - 1.2rem);
+    }
   }
-  & tbody tr:has(> td:first-child:empty) { counter-increment: row }
-  & tbody td:first-child:empty { width: 3em; color: var(--muted); &::before { content: counter(row) } }
+  & tbody tr:has(> td:first-child:empty) {
+    counter-increment: row;
+  }
+  & tbody td:first-child:empty {
+    width: 3em;
+    color: var(--muted);
+    &::before {
+      content: counter(row);
+    }
+  }
   & .entities {
     table-layout: fixed;
-    & td:first-child:not(:empty) { color: var(--muted); font-variant-numeric: tabular-nums }
-    & :is(th, td):nth-child(1) { width: 3.4em }
-    & :is(th, td):nth-child(2) { width: auto; min-width: 0 }
-    & :is(th, td):nth-child(3) { width: 8.6rem }
-    & select[name=kind] { width: max-content; min-width: max-content; field-sizing: content }
-    & :is(th, td):nth-child(4) { width: 3.6rem }
-    & :is(th, td):nth-child(5) { width: 7.5rem }
-    & :is(th, td):last-child { width: 2.6rem }
+    & td:first-child:not(:empty) {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    & :is(th, td):nth-child(1) {
+      width: 3.4em;
+    }
+    & :is(th, td):nth-child(2) {
+      width: auto;
+      min-width: 0;
+    }
+    & :is(th, td):nth-child(3) {
+      width: 8.6rem;
+    }
+    & select[name="kind"] {
+      width: max-content;
+      min-width: max-content;
+      field-sizing: content;
+    }
+    & :is(th, td):nth-child(4) {
+      width: 3.6rem;
+    }
+    & :is(th, td):nth-child(5) {
+      width: 7.5rem;
+    }
+    & :is(th, td):last-child {
+      width: 2.6rem;
+    }
   }
-  & td:has(input:not([type=hidden]), select) {
+  & td:has(input:not([type="hidden"]), select) {
     padding: 4px;
     & :is(input, select) {
       width: 100%;
       border-color: color-mix(in oklab, var(--ink) 11%, transparent);
       background: color-mix(in oklab, var(--ink) 4.5%, transparent);
-      &:focus { border-color: var(--accent); background: var(--surface); outline: 2px solid var(--accent); outline-offset: 1px }
+      &:focus {
+        border-color: var(--accent);
+        background: var(--surface);
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
     }
-    & input[name=total] { pointer-events: none; border-color: transparent; background: transparent; &:focus { border-color: transparent; background: transparent; outline: none } }
+    & input[name="total"] {
+      pointer-events: none;
+      border-color: transparent;
+      background: transparent;
+      &:focus {
+        border-color: transparent;
+        background: transparent;
+        outline: none;
+      }
+    }
   }
-  & td.tools { width: 1%; padding-inline: 2px; white-space: nowrap; text-align: end }
-  & td button { width: var(--h); padding: 0; border-radius: 50% }
+  & td.tools {
+    width: 1%;
+    padding-inline: 2px;
+    white-space: nowrap;
+    text-align: end;
+  }
+  & td button {
+    width: var(--h);
+    padding: 0;
+    border-radius: 50%;
+  }
   & .add {
-    width: 100%; margin-block-start: 8px; border-style: dashed; background: var(--bg);
-    & svg { width: 18px; height: 18px }
-    &[data-tone] { background: var(--tone-soft); color: var(--tone-ink); border-color: var(--tone-solid) }
+    width: 100%;
+    margin-block-start: 8px;
+    border-style: dashed;
+    background: var(--bg);
+    & svg {
+      width: 18px;
+      height: 18px;
+    }
+    &[data-tone] {
+      background: var(--tone-soft);
+      color: var(--tone-ink);
+      border-color: var(--tone-solid);
+    }
   }
   & footer {
-    display: grid; gap: 6px;
-    & p { display: flex; justify-content: space-between; gap: 12px }
-    & p:first-child { font-weight: 700; font-size: 1.1em }
-    & output[data-tone] { color: var(--tone-ink) }
+    display: grid;
+    gap: 6px;
+    & p {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    & p:first-child {
+      font-weight: 700;
+      font-size: 1.1em;
+    }
+    & output[data-tone] {
+      color: var(--tone-ink);
+    }
   }
   & .due {
-    color: var(--muted); font-variant-numeric: tabular-nums;
-    &:not(.due + .due) { padding-block-start: 8px }
-    & output { color: var(--ink); font-weight: 600 }
-    & output:not([name=paid])[data-owe=true] { color: light-dark(oklch(55% .24 25), oklch(70% .2 25)); font-weight: 800 }
-    &:last-of-type { font-size: 1.05em }
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    &:not(.due + .due) {
+      padding-block-start: 8px;
+    }
+    & output {
+      color: var(--ink);
+      font-weight: 600;
+    }
+    & output:not([name="paid"])[data-owe="true"] {
+      color: light-dark(oklch(55% 0.24 25), oklch(70% 0.2 25));
+      font-weight: 800;
+    }
+    &:last-of-type {
+      font-size: 1.05em;
+    }
   }
   & .pays {
-    table-layout: fixed; margin-block-start: 18px; border-block-start: 2px solid var(--tone-solid);
-    & caption { padding-block-start: 12px }
-    & :is(th, td):nth-child(1) { width: 2.6rem }
-    & :is(th, td):nth-child(2) { width: auto; min-width: 10rem }
-    & :is(th, td):nth-child(3) { width: 8rem; max-width: 8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-    & :is(th, td):nth-child(4) { width: 5rem }
-    & :is(th, td):last-child { width: 2.6rem }
+    table-layout: fixed;
+    margin-block-start: 18px;
+    border-block-start: 2px solid var(--tone-solid);
+    & caption {
+      padding-block-start: 12px;
+    }
+    & :is(th, td):nth-child(1) {
+      width: 2.6rem;
+    }
+    & :is(th, td):nth-child(2) {
+      width: auto;
+      min-width: 10rem;
+    }
+    & :is(th, td):nth-child(3) {
+      width: 8rem;
+      max-width: 8rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    & :is(th, td):nth-child(4) {
+      width: 5rem;
+    }
+    & :is(th, td):last-child {
+      width: 2.6rem;
+    }
   }
   & .acts {
-    display: flex; justify-content: end; gap: 8px; margin-block-start: 8px;
-    & a[data-tone=cancel] { order: -1; margin-inline-end: auto }
+    display: flex;
+    justify-content: end;
+    gap: 8px;
+    margin-block-start: 8px;
+    & a[data-tone="cancel"] {
+      order: -1;
+      margin-inline-end: auto;
+    }
   }
-  &#entities .acts:not(:has(.primary[data-dirty])) { display: none }
+  &#entities .acts:not(:has(.primary[data-dirty])) {
+    display: none;
+  }
 }
 
-:lang(fa) .doc tbody td:first-child:empty::before { content: counter(row, persian) }
+:lang(fa) .doc tbody td:first-child:empty::before {
+  content: counter(row, persian);
+}

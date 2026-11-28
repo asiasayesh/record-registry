@@ -20,7 +20,7 @@ const pin = (form, key = form.id === 'editor' ? `e:${form.serial.value}:${form.f
 const mount = (id, html) => {
   const el = $(`#${id}`)
   const form = (el.innerHTML = cache[id] = html, el.querySelector('#editor, #entities, #born'))
-  id === 'screen' && (el.ariaLabel = state.born ? t.addEntity : state.edit?.fresh ? t.new : t.edit, html ? el.open || (el.showModal(), form?.querySelector('[autofocus], [name=kind]')?.focus()) : (origin.editor = null, el.close()))
+  id === 'screen' && (el.ariaLabel = state.born ? t.addEntity : state.edit?.fresh ? t.new : t.edit, html ? el.open || (el.showModal(), (form?.querySelector('[autofocus]') ?? form?.querySelector('[name=kind]'))?.focus()) : (origin.editor = null, el.close()))
   form && (pin(form), controls(form).map(hint))
 }
 const paint = () => Object.entries(regions)
@@ -97,12 +97,12 @@ const restore = async (file, mode) => file && confirm(t[`${mode}Ask`]) && (
   location.hash = '#/'
 )
 
-const tune = (form, kind = form.kind.value, side = sideOf(form), e = ent(toNum(form.entity.value)), ok = fit(e, kind, side)) => (
+const tune = (form, kind = form.kind.value, side = sideOf(form), e = ent(toNum(form.entity.value)), ok = fit(e, kind, side), free = kind === 'other') => (
   form.entity.innerHTML = opts([['', t.pick], ...state.entities.filter(x => fit(x, kind, side)).map(x => [x.id, x.name || t.need])], ok ? e.id : ''),
-  ok && e.name && (form.party.value = e.name),
-  form.querySelector('.party').toggleAttribute('data-open', !(ok && e.name)),
-  form.entity.required = !!kind && kind !== 'other' && !form.party.value.trim(),
-  form.party.required = !!kind && !(ok && e.name),
+  form.party.disabled = !free,
+  (ok || !free) && (form.party.value = (ok && e.name) || ''),
+  form.entity.required = !!kind && !free,
+  form.party.required = free,
   hint(form.entity),
   hint(form.party)
 )

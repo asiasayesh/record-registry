@@ -15,6 +15,18 @@
   --accent: light-dark(oklch(15% 0.006 250), oklch(98% 0.004 250));
   --accent-soft: light-dark(oklch(91% 0.004 250), oklch(22% 0.006 250));
   --on-accent: light-dark(oklch(99% 0 0), oklch(9% 0 0));
+  --seg: light-dark(
+    color-mix(in oklab, var(--ink) 6%, var(--bg)),
+    color-mix(in oklab, var(--ink) 8%, black)
+  );
+  --seg-line: light-dark(
+    color-mix(in oklab, var(--ink) 16%, var(--edge)),
+    color-mix(in oklab, var(--ink) 28%, black)
+  );
+  --seg-idle: light-dark(
+    var(--surface),
+    color-mix(in oklab, var(--ink) 16%, black)
+  );
   --danger: 25;
   --debit: 55;
   --edit: 85;
@@ -45,7 +57,10 @@
   [data-palette="plum"]
 ) {
   --accent: oklch(calc(var(--accent-l) * 1%) var(--accent-c) var(--hue));
-  --accent-soft: light-dark(oklch(96% 0.014 var(--hue)), oklch(22% 0.02 var(--hue)));
+  --accent-soft: light-dark(
+    oklch(96% 0.014 var(--hue)),
+    oklch(22% 0.02 var(--hue))
+  );
   --on-accent: oklch(99% 0.004 var(--hue));
 }
 :is(:root, .swatches button)[data-palette="ink"] {
@@ -110,8 +125,14 @@
   --tone: var(--out);
 }
 [data-tone] {
-  --tone-soft: light-dark(oklch(96% 0.022 var(--tone)), oklch(24% 0.03 var(--tone)));
-  --tone-ink: light-dark(oklch(40% 0.07 var(--tone)), oklch(84% 0.05 var(--tone)));
+  --tone-soft: light-dark(
+    oklch(96% 0.022 var(--tone)),
+    oklch(24% 0.03 var(--tone))
+  );
+  --tone-ink: light-dark(
+    oklch(40% 0.07 var(--tone)),
+    oklch(84% 0.05 var(--tone))
+  );
   --tone-solid: oklch(48% 0.1 var(--tone));
 }
 
@@ -278,19 +299,20 @@ button,
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: 1fr;
-    gap: 2px;
-    padding: 2px;
-    border: 1px solid var(--edge);
+    gap: 3px;
+    padding: 3px;
+    border: 1px solid var(--seg-line);
     border-radius: var(--r);
-    background: var(--bg);
+    background: var(--seg);
   }
   & nav .btn {
-    border-color: transparent;
-    background: transparent;
+    border-color: var(--seg-line);
+    background: var(--seg-idle);
     color: var(--muted);
+    font-weight: 500;
     @media (hover: hover) {
       &:hover:not([aria-current="page"]) {
-        background: var(--surface);
+        background: color-mix(in oklab, var(--ink) 12%, var(--seg-idle));
         color: var(--ink);
       }
     }
@@ -307,7 +329,11 @@ button,
     background: oklch(58% 0.19 145);
     color: oklch(98% 0.02 145);
     border-color: oklch(42% 0.14 145);
-    &::before { content: "+"; font-size: 1.2em; line-height: 1 }
+    &::before {
+      content: "+";
+      font-size: 1.2em;
+      line-height: 1;
+    }
     @media (hover: hover) {
       &:hover {
         background: oklch(50% 0.19 145);
@@ -321,7 +347,9 @@ button,
     align-items: center;
     gap: 8px;
     text-decoration: none;
-    & img { width: 34px }
+    & img {
+      width: 34px;
+    }
     & b {
       font-size: 1.05em;
       font-weight: 600;
@@ -331,7 +359,9 @@ button,
   & a[aria-current="page"] {
     background: var(--accent);
     color: var(--on-accent);
-    border-color: transparent;
+    border-color: var(--accent);
+    font-weight: 800;
+    box-shadow: 0 1px 2px oklch(0% 0 0 / 45%);
   }
   & [data-act="theme"] {
     width: var(--h);
@@ -430,11 +460,11 @@ main {
 
 .switch {
   display: flex;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--edge);
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--seg-line);
   border-radius: var(--r);
-  background: var(--bg);
+  background: var(--seg);
   & label {
     flex: 1;
     text-align: center;
@@ -442,10 +472,25 @@ main {
     border-radius: var(--r-sm);
     cursor: pointer;
     color: var(--muted);
+    font-weight: 500;
+    background: var(--seg-idle);
+    border: 1px solid var(--seg-line);
+    transition:
+      background 0.15s,
+      color 0.15s,
+      border-color 0.15s;
     &:has(:checked) {
-      background: var(--accent-soft);
-      color: var(--ink);
-      font-weight: 700;
+      background: var(--accent);
+      color: var(--on-accent);
+      border-color: var(--accent);
+      font-weight: 800;
+      box-shadow: 0 1px 2px oklch(0% 0 0 / 45%);
+    }
+    @media (hover: hover) {
+      &:hover:not(:has(:checked)) {
+        background: color-mix(in oklab, var(--ink) 12%, var(--seg-idle));
+        color: var(--ink);
+      }
     }
     &:has(:focus-visible) {
       outline: 2px solid var(--accent);
@@ -454,7 +499,9 @@ main {
   & input {
     position: absolute;
     opacity: 0;
-    &:focus-visible { outline: none }
+    &:focus-visible {
+      outline: none;
+    }
   }
 }
 
@@ -545,10 +592,19 @@ main {
 }
 
 @media (max-width: 680px) {
-  body { height: auto; min-height: 100dvh }
-  main { grid-template-columns: 1fr }
-  #split { display: none }
-  #history { max-height: 52dvh }
+  body {
+    height: auto;
+    min-height: 100dvh;
+  }
+  main {
+    grid-template-columns: 1fr;
+  }
+  #split {
+    display: none;
+  }
+  #history {
+    max-height: 52dvh;
+  }
 }
 
 #record {
@@ -585,10 +641,14 @@ main {
       }
     }
     &:has([aria-current]) {
-      box-shadow: var(--shadow), inset 2px 0 var(--accent);
+      box-shadow:
+        var(--shadow),
+        inset 2px 0 var(--accent);
     }
     &:dir(rtl):has([aria-current]) {
-      box-shadow: var(--shadow), inset -2px 0 var(--accent);
+      box-shadow:
+        var(--shadow),
+        inset -2px 0 var(--accent);
     }
   }
   & a {
@@ -660,15 +720,32 @@ dialog {
   }
   & #born {
     align-content: start;
+    align-items: end;
     width: min(100%, 36rem);
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
+    & :is(.switch, .acts) {
+      grid-column: 1 / -1;
+    }
     & label {
       display: grid;
       gap: 6px;
-      width: 100%;
-      & span { color: var(--muted); font-size: .85em; font-weight: 600 }
+      & span {
+        color: var(--seg-line);
+        font-size: 0.85em;
+        font-weight: 600;
+      }
     }
-    & input { width: 100% }
-    & select[name=kind] { width: max-content; min-width: max-content }
+    & label:has([name="party"]) {
+      min-width: 0;
+      & input {
+        width: 100%;
+      }
+    }
+    & :is(select[name="kind"], input[name="debt"]) {
+      width: max-content;
+      min-width: max-content;
+      field-sizing: content;
+    }
   }
 }
 
@@ -747,5 +824,7 @@ dialog {
   background: var(--tone-soft);
   color: var(--tone-ink);
   border: 1px solid color-mix(in oklch, var(--tone-solid) 55%, transparent);
-  &[hidden] { display: none }
+  &[hidden] {
+    display: none;
+  }
 }
