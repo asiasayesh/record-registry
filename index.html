@@ -30,12 +30,12 @@
         </button>
       </menu>
     </header>
-    <dialog id="settings" closedby="any">
+    <dialog id="settings" closedby="any" aria-labelledby="settings-title">
       <button type="button" commandfor="settings" command="close" data-label="close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
       <form id="io">
-        <h2 data-t="settings"></h2>
+        <h2 id="settings-title" data-t="settings"></h2>
         <h3 data-t="appearance"></h3>
         <p data-t="language"></p>
         <button type="button" data-act="lang" data-t="lang"></button>
@@ -49,6 +49,21 @@
           <button type="button" data-act="palette" data-palette="green" data-label="green"></button>
           <button type="button" data-act="palette" data-palette="plum" data-label="plum"></button>
           <button type="button" data-act="palette" data-palette="rose" data-label="rose"></button>
+        </div>
+        <h3 data-t="letterhead"></h3>
+        <div class="letter">
+          <label><span data-t="name"></span><input name="name" dir="auto" autocomplete="organization" enterkeyhint="next"></label>
+          <label><span data-t="tagline"></span><input name="tagline" dir="auto" enterkeyhint="next"></label>
+          <div class="pair">
+            <label><span data-t="phone"></span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" enterkeyhint="next"></label>
+            <label><span data-t="fax"></span><input name="fax" type="tel" inputmode="tel" enterkeyhint="next"></label>
+          </div>
+          <label><span data-t="mobile"></span><input name="mobile" type="tel" autocomplete="tel" inputmode="tel" enterkeyhint="done"></label>
+          <label class="logo"><img alt=""><input type="file" name="logo" accept="image/*" hidden></label>
+          <span>
+            <button type="button" data-act="unlogo" data-tone="cancel" data-t="clearLogo" hidden></button>
+            <button type="submit" class="primary" data-t="save"></button>
+          </span>
         </div>
         <h3 data-t="data"></h3>
         <p data-t="backupHint"></p>
