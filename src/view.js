@@ -12,7 +12,6 @@ const link = (id, title, sub, cur) => `<div class="item">
   <a href="#/${id}"${id === cur ? ' aria-current="page"' : ''}><b>${h(title)}</b><small>${sub}</small></a>
   <button type="button" data-act="print" data-tone="out" data-id="${id}">${t.print}</button>
 </div>`
-const meta = r => `#${sn(r.id)} · ${t[sideOf(r)]} · ${date(r.at)} · ${num(r.sum)}${tag(r)}`
 const sideOf = r => r?.side || 'sale'
 
 const modes = {
@@ -86,7 +85,7 @@ const control = (name, value, extra) => input(name, value ?? '', attr(name, extr
 export const opts = (pairs, cur) => pairs.map(([v, l]) => `<option value="${h(v)}"${`${v}` === `${cur ?? ''}` ? ' selected' : ''}>${h(l)}</option>`).join('')
 export const entitySelect = (entities, kind, side, id) => `<select name="entity" aria-invalid="${kind && !id ? 'true' : 'false'}" aria-label="${ts(side, 'party')}"${kind ? ' required' : ''}>${opts([['', t.pick], ...entities.filter(x => fit(x, kind, side)).map(x => [x.id, x.name || t.need])], id ?? '')}</select>`
 const tools = (attrs = '') => `<td class="tools"><button type="button" data-act="del" data-tone="del" aria-label="${t.del}"${attrs}>×</button></td>`
-const pick = (name, values, cur) => `<fieldset class="switch">${values.map(v => `<label><input type="radio" name="${name}" value="${v}"${v === cur ? ' checked' : ''}><span>${t[v]}</span></label>`).join('')}</fieldset>`
+const pick = (name, values, cur, act) => `<fieldset class="switch">${values.map(v => `<label${act ? ` data-act="${name}" data-${name}="${v}"` : ''}><input type="radio" name="${name}" value="${v}"${v === cur ? ' checked' : ''}><span>${t[v]}</span></label>`).join('')}</fieldset>`
 const row = (it = {}) => `<tr><td></td>${['description', 'qty', 'unit', 'total'].map(name => `<td>${control(name, it[name] || '')}</td>`).join('')}${tools()}</tr>`
 const pay = ({ stamp = Date.now(), note, amount } = {}) => `<tr><td></td><td><input type="hidden" name="stamp" value="${stamp}">${control('note', note)}</td><td>${date(stamp)}</td><td>${control('amount', amount || '')}</td>${tools()}</tr>`
 const ent = (e = {}, list = [], n = list.filter(r => r.entity_id === e.id).length, due = owed(list, e.id)) => `<tr><td>${e.id ? sn(e.id) : ''}</td><td><input type="hidden" name="ref" value="${e.id ?? ''}">${control('party', e.name)}</td><td><select name="kind" ${attr('kind')}>${opts(fields.kind.options.map(k => [k, t[k]]), e.kind || 'person')}</select></td><td>${digits(n)}</td><td>${control('debt', (e.debt || 0) + due, `min="${due}"`)}</td>${tools(n && e.name?.trim() && e.kind !== 'other' ? ' disabled' : '')}</tr>`
@@ -131,13 +130,15 @@ const team = (entities, list, role = 'buyer') => `
     <nav class="acts"><button type="button" data-act="revert" data-tone="cancel">${t.cancel}</button><button class="primary">${t.save}</button></nav>
   </form>`
 
+const face = (r, row) => `<a href="#/${r.id}"><b>${h(r.party)}</b>${row ? `<small><span>#${sn(r.id)}</span><span>${t[sideOf(r)]}</span><span>${date(r.at)}${tag(r)}</span></small>` : `<small>#${sn(r.id)} · ${t[sideOf(r)]} · ${date(r.at)}${tag(r)}</small>`}<b data-tone="debit">${num(r.sum)}</b></a>`
+const tile = (r, row) => `<div class="item"${r.cancelled ? ' data-off' : ''}>${face(r, row)}<button type="button" data-act="print" data-tone="out" data-id="${r.id}">${t.print}</button>${row && !r.cancelled ? `<a class="btn" data-tone="edit" href="#/${r.id}/edit">${t.edit}</a>` : ''}</div>`
 const recent = list => [...new Set([...list.filter(r => r.opened).toSorted((a, b) => b.opened - a.opened), ...list])].slice(0, 3)
-const empty = (list, top = recent(list)) => top.length
-  ? `<h2>${t.recent}</h2><nav class="cards">${top.map(r => link(r.id, r.party, meta(r))).join('')}</nav>`
+const empty = (list, layout = 'cards', top = recent(list), rows = layout === 'rows') => top.length
+  ? `<header><h2>${t.recent}</h2>${pick('layout', ['cards', 'rows'], rows ? 'rows' : 'cards', 1)}</header><nav class="${rows ? 'rows' : 'cards'}">${top.map(r => tile(r, rows)).join('')}</nav>`
   : `<p class="hint">${t.empty}</p>`
 const stack = rows => rows.map(r => paper(r)).join('<hr class="cut">') || `<p class="hint">${t.none}</p>`
 
-export const record = ({ cur, list, span, roster, entities, rosterRole = 'buyer' }) =>
-  roster ? team(entities, list, rosterRole) : cur ? doc(cur, list) : span ? stack(span) : empty(list)
+export const record = ({ cur, list, span, roster, entities, rosterRole = 'buyer', layout = 'cards' }) =>
+  roster ? team(entities, list, rosterRole) : cur ? doc(cur, list) : span ? stack(span) : empty(list, layout)
 
 export const screen = ({ edit, list, entities, born, rosterRole = 'buyer' }) => edit ? editor(edit, list, entities) : born ? entry(rosterRole) : ''

@@ -27,7 +27,7 @@ const ticket = { n: 0 }
 const from = (n, d = new Date()) => d.setDate(d.setHours(0, 0, 0, 0) && d.getDate() - n + 1)
 const docs = days => (mine => Promise.all(+days > 0 ? state.list.filter(r => r.at >= from(+days)).map(r => db.get(r.id)) : []).then(rows => mine === ticket.n && rows.filter(Boolean)))(++ticket.n)
 const show = async () => location.hash === '#/span' && (rows => location.hash === '#/span' && rows && (state.span = rows))(await docs(state.filter.days))
-const state = new Proxy({ list: [], entities: [], filter: { mode: 'date', days: '7' }, cur: null, edit: null, roster: false, rosterRole: 'buyer' }, {
+const state = new Proxy({ list: [], entities: [], filter: { mode: 'date', days: '7' }, cur: null, edit: null, roster: false, rosterRole: 'buyer', layout: localStorage.layout === 'rows' ? 'rows' : 'cards' }, {
   set: (o, k, v) => (o[k] = v, schedule(), true),
 })
 

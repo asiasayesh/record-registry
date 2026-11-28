@@ -26,7 +26,7 @@ const dict = {
     paid: 'دریافتی', rest: 'مانده این سند', prior: 'بدهی قبلی', debt: 'بدهی کل طرف حساب',
     row: 'ردیف', description: 'شرح کالا', qty: 'تعداد', unit: 'قیمت واحد', total: 'قیمت کل', addRow: 'ردیف جدید',
     sum: 'جمع کل', words: 'مبلغ کل به حروف', currency: 'ریال',
-    recent: 'آخرین اسناد', empty: 'هنوز سندی ثبت نشده', none: 'موردی یافت نشد',
+    recent: 'آخرین اسناد', cards: 'کارت', rows: 'فهرست', empty: 'هنوز سندی ثبت نشده', none: 'موردی یافت نشد',
   },
   en: {
     dir: 'ltr', locale: 'en-GB', digits: '0123456789', next: 'fa',
@@ -55,7 +55,7 @@ const dict = {
     paid: 'Received', rest: 'Balance due', prior: 'Previous debt', debt: 'Total entity debt',
     row: '#', description: 'Description', qty: 'Qty', unit: 'Unit price', total: 'Total', addRow: 'Add row',
     sum: 'Total', words: 'Total in words', currency: 'IRR',
-    recent: 'Recent records', empty: 'No records yet', none: 'Nothing found',
+    recent: 'Recent records', cards: 'Cards', rows: 'List', empty: 'No records yet', none: 'Nothing found',
   },
 }
 

@@ -632,10 +632,24 @@ main {
   overflow: auto;
   min-height: 0;
   scrollbar-color: var(--edge) transparent;
-  & > h2 {
+  container-type: inline-size;
+  & > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     padding: 4px 6px 12px;
-    font-size: 1.15em;
-    font-weight: 800;
+    & h2 {
+      font-size: 1.15em;
+      font-weight: 800;
+    }
+    & .switch {
+      width: max-content;
+      & label {
+        flex: none;
+        padding-inline: 14px;
+      }
+    }
   }
   & .cut {
     width: 6rem;
@@ -644,17 +658,124 @@ main {
     border: 0;
     background: none;
   }
+  & :is(.cards, .rows) b[data-tone] {
+    color: var(--tone-ink);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  & [data-off] :is(b:not([data-tone]), small) {
+    color: var(--muted);
+  }
+  & .cards .item {
+    position: relative;
+    grid-template-columns: 1fr;
+    padding-inline-end: 0;
+    & button {
+      position: absolute;
+      inset-inline-end: 12px;
+      inset-block-end: 12px;
+    }
+    @media (hover: hover) {
+      &:not(:hover, :focus-within) button {
+        pointer-events: none;
+      }
+    }
+  }
+  & .cards a {
+    align-content: start;
+    gap: 2px;
+    padding: 16px 16px 48px;
+  }
+  & .cards b[data-tone] {
+    margin-block-start: 8px;
+    font-size: 1.45em;
+  }
+  & .rows {
+    display: grid;
+    background: var(--surface);
+    border: 2px solid var(--edge);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    & .item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 4.4rem 6rem;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      & > :is(button, a.btn) {
+        justify-self: end;
+      }
+      &:not(:last-child) {
+        border-block-end: 1px solid var(--edge);
+      }
+      @media (hover: hover) {
+        &:hover {
+          background: var(--bg);
+        }
+      }
+    }
+    & a:not(.btn) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 2px 12px;
+      min-width: 0;
+      padding: 4px 8px;
+      color: inherit;
+      text-decoration: none;
+      & small {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        grid-column: 1 / -1;
+        color: var(--muted);
+      }
+      & b:first-child {
+        min-width: 0;
+        overflow: hidden;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      & b[data-tone] {
+        grid-row: 1;
+        grid-column: 2;
+        justify-self: end;
+        min-width: 5.5rem;
+        text-align: end;
+      }
+    }
+    @container (min-width: 42rem) {
+      & a:not(.btn) {
+        grid-template-columns: minmax(0, 1.3fr) 3.6rem 3.6rem minmax(7.5rem, 1fr) 5.5rem;
+        column-gap: 14px;
+        & small {
+          display: contents;
+        }
+        & span {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        & b[data-tone] {
+          grid-row: auto;
+          grid-column: auto;
+          justify-self: end;
+        }
+      }
+    }
+  }
 }
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
   gap: 12px;
   & .item {
     background: var(--surface);
-    border: 1px solid var(--edge);
-    border-radius: var(--r);
-    padding-inline-end: 10px;
+    border: 2px solid var(--edge);
+    border-radius: 16px;
     box-shadow: var(--shadow);
     @media (hover: hover) {
       &:hover {
@@ -673,7 +794,7 @@ main {
     }
   }
   & a {
-    padding: 14px;
+    padding: 16px;
   }
 }
 

@@ -67,6 +67,7 @@ const acts = {
   lang: (_, { state, paint }) => (state.edit && (state.edit = read($('#editor'), state)), setLang(t.next), paint()),
   theme: () => setTheme(tone() === 'dark' ? 'light' : 'dark'),
   palette: ({ dataset: { palette } }) => setPalette(palette),
+  layout: ({ dataset: { layout } }, { state }, next = layout === 'rows' ? 'rows' : 'cards') => (localStorage.layout = next, state.layout = next),
 }
 
 const submits = {
