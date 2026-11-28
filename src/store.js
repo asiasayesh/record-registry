@@ -69,6 +69,7 @@ export const sync = (rows, role = 'buyer') => {
     ...rows.map(e => ['INSERT INTO entities (id, name, kind, debt, role) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, kind = excluded.kind, debt = excluded.debt, role = excluded.role', [e.ref || null, e.party, e.kind, e.debt, e.role || role]]),
   ])
 }
+export const put = e => exec('INSERT INTO entities (name, kind, debt, role) VALUES (?, ?, ?, ?)', e.name, e.kind, e.debt ?? 0, e.role || 'buyer')
 export const wipe = () => call('tx', ['payments', 'items', 'records', 'entities'].map(k => [`DELETE FROM ${k}`]))
 export const drop = id => call('tx', [
   [`UPDATE records SET party = coalesce(nullif(party, ''), (SELECT name FROM entities WHERE id = records.entity_id)), entity_id = NULL WHERE entity_id = ?`, [id]],

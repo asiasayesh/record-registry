@@ -14,13 +14,13 @@ const origin = {}
 const live = form => JSON.stringify([...form.querySelectorAll('input, select')].map(i => i.type === 'radio' ? `${i.name}:${i.value}:${i.checked}` : `${i.name}=${i.value}`))
 const dirty = form => form?.querySelector('button.primary')?.toggleAttribute('data-dirty', live(form) !== origin[form.id]?.json)
 const pin = (form, key = form.id === 'editor' ? `e:${form.serial.value}:${form.fresh.value}` : 'entities') => (
-  (form.id === 'entities' || origin[form.id]?.key !== key) && (origin[form.id] = { key, json: live(form) }),
+  (form.id === 'entities' || form.id === 'born' || origin[form.id]?.key !== key) && (origin[form.id] = { key, json: live(form) }),
   dirty(form)
 )
 const mount = (id, html) => {
   const el = $(`#${id}`)
-  const form = (el.innerHTML = cache[id] = html, el.querySelector('#editor, #entities'))
-  id === 'screen' && (el.ariaLabel = state.edit?.fresh ? t.new : t.edit, html ? el.open || (el.showModal(), el.querySelector('[name=kind]')?.focus()) : (origin.editor = null, el.close()))
+  const form = (el.innerHTML = cache[id] = html, el.querySelector('#editor, #entities, #born'))
+  id === 'screen' && (el.ariaLabel = state.born ? t.addEntity : state.edit?.fresh ? t.new : t.edit, html ? el.open || (el.showModal(), form?.querySelector('[autofocus], [name=kind]')?.focus()) : (origin.editor = null, el.close()))
   form && (pin(form), controls(form).map(hint))
 }
 const paint = () => Object.entries(regions)
@@ -51,7 +51,7 @@ const routes = {
 
 const route = async () => {
   const [, id = '', act = 'view'] = location.hash.split('/')
-  Object.assign(state, await (routes[id] ?? routes[act])(id), { roster: id === 'entities' })
+  Object.assign(state, await (routes[id] ?? routes[act])(id), { roster: id === 'entities', born: id === 'entities' && act === 'new' })
   $('#span').ariaCurrent = id === 'span' ? 'page' : null
   $(`#bar a[data-t="records"]`).ariaCurrent = id === 'entities' || id === 'new' ? null : 'page'
   $(`#bar a[href="#/entities"]`).ariaCurrent = id === 'entities' ? 'page' : null
@@ -152,7 +152,7 @@ const controls = root => [...root.querySelectorAll('input:not([type=hidden]):not
 const empty = i => fields[i.name]?.gt ? !(toNum(i.value) > 0) : !i.value.trim()
 const hint = i => i?.setCustomValidity && (i.setCustomValidity(i.required && empty(i) ? t.need : ''), i.ariaInvalid = `${!i.validity.valid}`, i.title = i.validity.valid ? '' : t.need)
 const gate = root => (els => (els.map(hint), els.every(i => i.validity.valid || i.reportValidity())))(controls(root))
-const relax = el => ['editor', 'entities'].includes(el.form?.id) && hint(el)
+const relax = el => ['editor', 'entities', 'born'].includes(el.form?.id) && hint(el)
 
 const toast = (tone, text, el = $('#toast')) => (el.hidden = false, el.dataset.tone = tone, el.textContent = text, clearTimeout(toast.id), toast.id = setTimeout(() => el.hidden = true, 2200))
 const submits = {
@@ -173,11 +173,21 @@ const submits = {
     await reload()
     toast('credit', t.saved)
   },
+  born: async ({ target }) => {
+    if (!gate(target)) return toast('del', t.need)
+    const role = target.role.value
+    await db.put({ name: target.party.value.trim(), kind: target.kind.value, debt: Math.max(0, toNum(target.debt.value)), role })
+    cache.record = ''
+    state.rosterRole = role
+    await reload()
+    toast('credit', t.saved)
+    location.hash = '#/entities'
+  },
 }
 
 addEventListener('beforeinput', e => e.target.type === 'number' && /[۰-۹٠-٩٫,]/.test(e.data ?? '') && (e.preventDefault(), e.target.value = ascii(e.target.value + e.data).replace(/[,٬]/g, '').replace('٫', '.'), e.target.dispatchEvent(new Event('input', { bubbles: true }))))
 addEventListener('input', e => (relax(e.target), inputs[e.target.form?.id]?.(e), e.target.name === 'role' || dirty(e.target.form)))
-$('#screen').onclose = () => state.edit && (location.hash = state.edit.fresh ? '#/' : `#/${state.edit.id}`)
+$('#screen').onclose = () => state.born ? location.hash = '#/entities' : state.edit && (location.hash = state.edit.fresh ? '#/' : `#/${state.edit.id}`)
 addEventListener('invalid', e => e.target.ariaInvalid = 'true', true)
 const act = el => acts[el?.dataset.act]?.(el)
 addEventListener('click', e => act(e.target.closest('[data-act]')))

@@ -295,8 +295,26 @@ button,
       }
     }
   }
-  & menu :is(button, .btn):not(.primary) {
+  & menu :is(button, .btn):not(.primary, [data-t="new"]) {
     background: var(--bg);
+  }
+  & [data-t="new"] {
+    grid-auto-flow: column;
+    gap: 6px;
+    border-width: 2px;
+    border-radius: 999px;
+    font-weight: 700;
+    background: oklch(58% 0.19 145);
+    color: oklch(98% 0.02 145);
+    border-color: oklch(42% 0.14 145);
+    &::before { content: "+"; font-size: 1.2em; line-height: 1 }
+    @media (hover: hover) {
+      &:hover {
+        background: oklch(50% 0.19 145);
+        border-color: oklch(38% 0.14 145);
+        color: oklch(98% 0.02 145);
+      }
+    }
   }
   & nav > a:not(.btn) {
     display: flex;
@@ -639,6 +657,18 @@ dialog {
     border: 0;
     border-radius: 0;
     box-shadow: none;
+  }
+  & #born {
+    align-content: start;
+    width: min(100%, 36rem);
+    & label {
+      display: grid;
+      gap: 6px;
+      width: 100%;
+      & span { color: var(--muted); font-size: .85em; font-weight: 600 }
+    }
+    & input { width: 100% }
+    & select[name=kind] { width: max-content; min-width: max-content }
   }
 }
 

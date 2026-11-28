@@ -36,7 +36,9 @@ export const history = ({ list, filter, cur }) => listing(modes[filter.mode](lis
 const thead = (k, extra = '', side = 'sale') => `<thead><tr>${grids[k].cols.map(c => `<th>${ts(side, c)}</th>`).join('')}${extra}</tr></thead>`
 const plus = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'
 const grid = (k, body, cap = '', side = 'sale', tone = grids[k].tone) => `<table class="${k}"${tone ? ` data-tone="${tone}"` : ''}>${cap && `<caption>${cap}</caption>`}${thead(k, '<th></th>', side)}<tbody>${body}</tbody></table>
-  <button type="button" class="add" data-act="row" data-of="${k}"${tone ? ` data-tone="${tone}"` : ''} aria-label="${ts(side, grids[k].add)}" title="${ts(side, grids[k].add)}">${plus}</button>`
+  ${k === 'entities'
+    ? `<a class="btn add" href="#/entities/new" aria-label="${t.addEntity}" title="${t.addEntity}">${plus}</a>`
+    : `<button type="button" class="add" data-act="row" data-of="${k}"${tone ? ` data-tone="${tone}"` : ''} aria-label="${ts(side, grids[k].add)}" title="${ts(side, grids[k].add)}">${plus}</button>`}`
 
 const head = (r, serial, party, extra = '') => `
   <header>
@@ -120,6 +122,15 @@ const editor = (r, list, entities, side = sideOf(r), sum = tally(r.items), paid 
     </footer>
   </form>`
 
+const entry = role => `
+  <form id="born" class="doc" novalidate>
+    ${pick('role', ['buyer', 'seller'], role)}
+    <label><span>${t.name}</span>${control('party', '', 'autofocus')}</label>
+    <label><span>${t.kind}</span><select name="kind" ${attr('kind')}>${opts(fields.kind.options.map(k => [k, t[k]]), 'person')}</select></label>
+    <label><span>${t.owed}</span>${control('debt', 0)}</label>
+    <nav class="acts"><a class="btn" data-tone="cancel" href="#/entities">${t.cancel}</a><button class="primary">${t.save}</button></nav>
+  </form>`
+
 const team = (entities, list, role = 'buyer') => `
   <form id="entities" class="doc" novalidate>
     ${pick('role', ['buyer', 'seller'], role)}
@@ -136,4 +147,4 @@ const stack = rows => rows.map(r => paper(r)).join('<hr class="cut">') || `<p cl
 export const record = ({ cur, list, span, roster, entities, rosterRole = 'buyer' }) =>
   roster ? team(entities, list, rosterRole) : cur ? doc(cur, list) : span ? stack(span) : empty(list)
 
-export const screen = ({ edit, list, entities }) => edit ? editor(edit, list, entities) : ''
+export const screen = ({ edit, list, entities, born, rosterRole = 'buyer' }) => edit ? editor(edit, list, entities) : born ? entry(rosterRole) : ''
