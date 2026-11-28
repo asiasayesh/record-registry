@@ -73,9 +73,14 @@ export const next = () =>
 export const touch = (id) =>
   exec('UPDATE records SET opened = ? WHERE id = ?', Date.now(), id)
 
-const recordSql = `INSERT INTO records (id, entity_id, party, at, side) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET entity_id = excluded.entity_id, party = excluded.party, side = excluded.side`
-const otherSql = `INSERT INTO records (id, entity_id, party, at, side) VALUES (?, (SELECT id FROM entities WHERE kind = 'other' AND ifnull(role, 'buyer') = ? AND trim(name) = ? ORDER BY id LIMIT 1), ?, ?, ?) ON CONFLICT (id) DO UPDATE SET entity_id = excluded.entity_id, party = excluded.party, side = excluded.side`
-const ensureSql = `INSERT INTO entities (name, kind, debt, role) SELECT ?, 'other', 0, ? WHERE NOT EXISTS (SELECT 1 FROM entities WHERE kind = 'other' AND ifnull(role, 'buyer') = ? AND trim(name) = ?)`
+const kept =
+  'ON CONFLICT (id) DO UPDATE SET entity_id = excluded.entity_id, party = excluded.party, side = excluded.side'
+const otherOf = `kind = 'other' AND ifnull(role, 'buyer') = ? AND trim(name) = ?`
+const recordSql = `INSERT INTO records (id, entity_id, party, at, side) VALUES (?, ?, ?, ?, ?) ${kept}`
+const otherSql = `INSERT INTO records (id, entity_id, party, at, side) VALUES (?, (SELECT id FROM entities WHERE ${otherOf} ORDER BY id LIMIT 1), ?, ?, ?) ${kept}`
+const ensureSql = `INSERT INTO entities (name, kind, debt, role) SELECT ?, 'other', 0, ? WHERE NOT EXISTS (SELECT 1 FROM entities WHERE ${otherOf})`
+const detach = (where) =>
+  `UPDATE records SET party = coalesce(nullif(party, ''), (SELECT name FROM entities WHERE id = records.entity_id)), entity_id = NULL WHERE ${where}`
 
 export const save = async (r) => {
   const want = roles[r.side || 'sale']
@@ -127,7 +132,7 @@ export const sync = (rows, role = 'buyer') => {
   const gone = `ifnull(role, 'buyer') = ? AND id NOT IN (SELECT value FROM json_each(?))`
   return call('tx', [
     [
-      `UPDATE records SET party = coalesce(nullif(party, ''), (SELECT name FROM entities WHERE id = records.entity_id)), entity_id = NULL WHERE entity_id IN (SELECT id FROM entities WHERE ${gone})`,
+      detach(`entity_id IN (SELECT id FROM entities WHERE ${gone})`),
       [role, keep],
     ],
     [`DELETE FROM entities WHERE ${gone}`, [role, keep]],
@@ -154,10 +159,7 @@ export const wipe = () =>
   )
 export const drop = (id) =>
   call('tx', [
-    [
-      `UPDATE records SET party = coalesce(nullif(party, ''), (SELECT name FROM entities WHERE id = records.entity_id)), entity_id = NULL WHERE entity_id = ?`,
-      [id],
-    ],
+    [detach('entity_id = ?'), [id]],
     [`DELETE FROM entities WHERE id = ?`, [id]],
   ])
 

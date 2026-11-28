@@ -86,7 +86,7 @@ const reload = async () => {
     db.list(),
     db.entities(),
     db.brand().then(apply),
-  ]).then(([list, entities]) => [list, entities])
+  ])
   if ($('#settings').open) letter()
 }
 const blank = (id) => ({

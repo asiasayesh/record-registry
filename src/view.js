@@ -4,7 +4,7 @@ import { date, digits, lang, num, t, toNum, tr, ts, words } from '@/i18n.js'
 import { balance, owed, tally } from '@/ledger.js'
 import { hit, match, terms } from '@/search.js'
 
-export const h = (s) =>
+const h = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt()};`)
 
 const sn = (id) => digits(String(id).padStart(3, '0'))
@@ -88,9 +88,7 @@ const head = (r, serial, party, extra = '') => `
       ${tr(brand.name) ? `<h1>${h(tr(brand.name))}</h1>` : ''}
       ${[
         tr(brand.tagline) && h(tr(brand.tagline)),
-        [bit('phone', brand.phone), bit('fax', brand.fax)]
-          .filter(Boolean)
-          .join(' · '),
+        bits(bit('phone', brand.phone), bit('fax', brand.fax)),
         bit('mobile', brand.mobile),
       ]
         .map(line)
@@ -181,8 +179,26 @@ export const opts = (pairs, cur) =>
         `<option value="${h(v)}"${`${v}` === `${cur ?? ''}` ? ' selected' : ''}>${h(l)}</option>`,
     )
     .join('')
+const kindOpts = (cur, blank) =>
+  opts(
+    [
+      ...(blank ? [['', blank]] : []),
+      ...fields.kind.options.map((k) => [k, t[k]]),
+    ],
+    cur,
+  )
+export const entityOpts = (entities, kind, side, id) =>
+  opts(
+    [
+      ['', t.pick],
+      ...entities
+        .filter((x) => fit(x, kind, side))
+        .map((x) => [x.id, x.name || t.need]),
+    ],
+    id ?? '',
+  )
 export const entitySelect = (entities, kind, side, id) =>
-  `<select name="entity" aria-invalid="${kind && !id ? 'true' : 'false'}" aria-label="${ts(side, 'party')}"${kind ? ' required' : ''}>${opts([['', t.pick], ...entities.filter((x) => fit(x, kind, side)).map((x) => [x.id, x.name || t.need])], id ?? '')}</select>`
+  `<select name="entity" aria-invalid="${kind && !id ? 'true' : 'false'}" aria-label="${ts(side, 'party')}"${kind ? ' required' : ''}>${entityOpts(entities, kind, side, id)}</select>`
 const tools = (attrs = '') =>
   `<td class="tools"><button type="button" data-act="del" data-tone="del" aria-label="${t.del}"${attrs}>×</button></td>`
 const pick = (name, values, cur, act) =>
@@ -197,10 +213,7 @@ const ent = (
   n = list.filter((r) => r.entity_id === e.id).length,
   due = owed(list, e.id),
 ) =>
-  `<tr><td>${e.id ? sn(e.id) : ''}</td><td><input type="hidden" name="ref" value="${e.id ?? ''}">${control('party', e.name)}</td><td><select name="kind" ${attr('kind')}>${opts(
-    fields.kind.options.map((k) => [k, t[k]]),
-    e.kind || 'person',
-  )}</select></td><td>${digits(n)}</td><td>${control('debt', (e.debt || 0) + due, `min="${due}"`)}</td>${tools(n && e.name?.trim() && e.kind !== 'other' ? ' disabled' : '')}</tr>`
+  `<tr><td>${e.id ? sn(e.id) : ''}</td><td><input type="hidden" name="ref" value="${e.id ?? ''}">${control('party', e.name)}</td><td><select name="kind" ${attr('kind')}>${kindOpts(e.kind || 'person')}</select></td><td>${digits(n)}</td><td>${control('debt', (e.debt || 0) + due, `min="${due}"`)}</td>${tools(n && e.name?.trim() && e.kind !== 'other' ? ' disabled' : '')}</tr>`
 
 export const lines = { items: row, pays: pay, entities: ent }
 
@@ -215,8 +228,11 @@ const party = (
     entity_id: r.entity_id,
     party: r.party,
   }),
+  nameAttrs = free
+    ? `placeholder="${ts(side, 'partyName')}" aria-invalid="${name ? 'false' : 'true'}" title="${name ? '' : t.need}"${name ? '' : ' required'}`
+    : `placeholder="${ts(side, 'partyName')}" disabled`,
 ) =>
-  `<fieldset class="party"><select name="kind" required aria-invalid="${kind ? 'false' : 'true'}" aria-label="${t.kind}">${opts([['', t.kind], ...fields.kind.options.map((k) => [k, t[k]])], kind)}</select>${free ? '' : entitySelect(entities, kind, side, entity?.id)}${input('party', name, `placeholder="${ts(side, 'partyName')}"${free ? ` aria-invalid="${name ? 'false' : 'true'}" title="${name ? '' : t.need}"${name ? '' : ' required'}` : ' disabled'}`)}</fieldset>`
+  `<fieldset class="party"><select name="kind" required aria-invalid="${kind ? 'false' : 'true'}" aria-label="${t.kind}">${kindOpts(kind, t.kind)}</select>${free ? '' : entitySelect(entities, kind, side, entity?.id)}${input('party', name, nameAttrs)}</fieldset>`
 
 const editor = (
   r,
@@ -246,13 +262,10 @@ const editor = (
     </footer>
   </form>`
 
-const entry = (role) => `
+const entry = (role = 'buyer') => `
   <form id="born" class="doc" novalidate>
     ${pick('role', ['buyer', 'seller'], role)}
-    <label><span>${t.kind}</span><select name="kind" ${attr('kind')}>${opts(
-      fields.kind.options.map((k) => [k, t[k]]),
-      'person',
-    )}</select></label>
+    <label><span>${t.kind}</span><select name="kind" ${attr('kind')}>${kindOpts('person')}</select></label>
     <label><span>${t.name}</span>${control('party', '', 'autofocus')}</label>
     <label><span>${t.owed}</span>${control('debt', 0)}</label>
     <nav class="acts"><a class="btn" data-tone="cancel" href="#/entities">${t.cancel}</a><button class="primary">${t.save}</button></nav>
@@ -298,15 +311,16 @@ const stack = (rows) =>
   `<p class="hint">${t.none}</p>`
 
 const shown = [
-  [(s) => s.roster, (s) => team(s.entities, s.list, s.rosterRole ?? 'buyer')],
+  [(s) => s.roster, (s) => team(s.entities, s.list, s.rosterRole)],
   [(s) => s.cur, (s) => doc(s.cur, s.list)],
   [(s) => s.span, (s) => stack(s.span)],
   [() => true, (s) => empty(s.list, s.layout ?? 'cards')],
 ]
 const opened = [
   [(s) => s.edit, (s) => editor(s.edit, s.list, s.entities)],
-  [(s) => s.born, (s) => entry(s.rosterRole ?? 'buyer')],
+  [(s) => s.born, (s) => entry(s.rosterRole)],
   [() => true, () => ''],
 ]
-export const record = (s) => shown.find(([on]) => on(s))[1](s)
-export const screen = (s) => opened.find(([on]) => on(s))[1](s)
+const take = (rows, s) => rows.find(([on]) => on(s))[1](s)
+export const record = (s) => take(shown, s)
+export const screen = (s) => take(opened, s)

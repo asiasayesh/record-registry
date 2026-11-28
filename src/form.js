@@ -1,7 +1,7 @@
-import { fields, fit, link } from '@/fields.js'
+import { fields, link } from '@/fields.js'
 import { ascii, grouped, num, t, toNum } from '@/i18n.js'
 import { balance } from '@/ledger.js'
-import { entitySelect, opts } from '@/view.js'
+import { entityOpts, entitySelect } from '@/view.js'
 
 const origin = {}
 const live = (form) =>
@@ -17,17 +17,10 @@ export const dirty = (form) =>
     ?.querySelector('button.primary')
     ?.toggleAttribute('data-dirty', live(form) !== origin[form.id]?.json)
 export const forget = (id) => (origin[id] = null)
-export const pin = (
-  form,
-  key = form.id === 'editor'
-    ? `e:${form.serial.value}:${form.fresh.value}`
-    : 'entities',
-) => {
-  if (
-    form.id === 'entities' ||
-    form.id === 'born' ||
-    origin[form.id]?.key !== key
-  )
+export const pin = (form) => {
+  const key =
+    form.id === 'editor' && `e:${form.serial.value}:${form.fresh.value}`
+  if (!key || origin[form.id]?.key !== key)
     origin[form.id] = { key, json: live(form) }
   dirty(form)
 }
@@ -126,30 +119,20 @@ export const gate = (root) => {
   els.map(hint)
   return els.every((i) => i.validity.valid || i.reportValidity())
 }
-export const relax = (el) =>
+const relax = (el) =>
   ['editor', 'entities', 'born'].includes(el.form?.id) && hint(el)
 
-const choices = (entities, kind, side, id) =>
-  opts(
-    [
-      ['', t.pick],
-      ...entities
-        .filter((x) => fit(x, kind, side))
-        .map((x) => [x.id, x.name || t.need]),
-    ],
-    id ?? '',
-  )
 const slot = (form, entities, kind, side, id) => {
   if (!form.entity)
     return form.kind.insertAdjacentHTML(
       'afterend',
       entitySelect(entities, kind, side, id),
     )
-  form.entity.innerHTML = choices(entities, kind, side, id)
+  form.entity.innerHTML = entityOpts(entities, kind, side, id)
   form.entity.required = !!kind
 }
 
-export const tune = (
+const tune = (
   form,
   state,
   kind = form.kind.value,
@@ -165,7 +148,7 @@ export const tune = (
   hint(form.party)
 }
 
-export const edit = ({ target }, state) => {
+const edit = ({ target }, state) => {
   if (['kind', 'side', 'entity'].includes(target.name)) tune(target.form, state)
   if (target.name === 'side') {
     state.edit = read(target.form, state)

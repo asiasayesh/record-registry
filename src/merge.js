@@ -31,7 +31,7 @@ const link = (db, entities) => {
     entities.map((e) => {
       const have = byKey[key(e)]
       const next = have ?? putEntity(db, e, !used.has(num(e.id)))
-      have &&
+      if (have)
         rows(db, 'UPDATE entities SET debt = ?, role = ? WHERE id = ?', [
           e.debt ?? 0,
           e.role ?? 'buyer',
@@ -80,8 +80,9 @@ const put = (db, src, linked, r, id = num(r.id)) => {
       r.side ?? 'sale',
     ],
   )
-  rows(db, 'DELETE FROM items WHERE record_id = ?', [id])
-  rows(db, 'DELETE FROM payments WHERE record_id = ?', [id])
+  ;['items', 'payments'].map((k) =>
+    rows(db, `DELETE FROM ${k} WHERE record_id = ?`, [id]),
+  )
   ;(src.items[id] ?? []).map((i) =>
     rows(db, 'INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)', [
       id,
