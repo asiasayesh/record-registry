@@ -23,4 +23,15 @@ export const grids = {
 
 export const roles = { sale: 'buyer', buy: 'seller' }
 export const roleOf = e => e?.role || 'buyer'
-export const fit = (e, kind, side) => e.kind === kind && roleOf(e) === roles[side]
+export const fit = (e, kind, side) => !!e && e.kind === kind && roleOf(e) === roles[side]
+
+const trim = s => `${s ?? ''}`.trim()
+export const link = (entities, { kind, side, entity_id, party } = {}) => {
+  const free = kind === 'other'
+  const typed = trim(party)
+  const found = free
+    ? typed && entities.filter(e => e.kind === 'other' && roleOf(e) === roles[side] && trim(e.name) === typed).toSorted((a, b) => a.id - b.id)[0]
+    : entities.find(e => e.id === +entity_id)
+  const entity = found && (free || fit(found, kind, side)) ? found : null
+  return { free, entity, name: free ? typed : entity?.name || '' }
+}

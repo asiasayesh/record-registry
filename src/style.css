@@ -190,7 +190,6 @@ input[readonly] {
   background: var(--bg);
 }
 input[type="number"] {
-  appearance: textfield;
   font-variant-numeric: tabular-nums;
 }
 input[data-num] {

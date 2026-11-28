@@ -1,12 +1,10 @@
 import brand from '@/brand.js'
-import { fields, grids, fit, roleOf } from '@/fields.js'
+import { fields, grids, fit, roleOf, link as linked } from '@/fields.js'
+import { tally, owed, balance } from '@/ledger.js'
 import { t, tr, ts, lang, digits, num, toNum, date, words } from '@/i18n.js'
 import { match, hit, terms } from '@/search.js'
 
 export const h = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt()};`)
-
-const tally = (xs = [], k = 'total') => xs.reduce((s, x) => s + (x[k] || 0), 0)
-export const owed = (list, id, skip) => !id ? 0 : list.filter(r => r.entity_id === id && r.id !== skip && !r.cancelled).reduce((s, r) => s + r.sum - r.paid, 0)
 
 const sn = id => digits(String(id).padStart(3, '0'))
 const tag = r => r.cancelled ? ` · ${t.cancelled}` : ''
@@ -71,13 +69,6 @@ export const paper = (r, acts = '', side = sideOf(r)) => `
     </footer>
   </article>`
 
-export const balance = (list, r, sum, paid, base = r.base ?? 0) => ({
-  paid,
-  rest: sum - paid,
-  prior: base + owed(list.filter(x => x.id < r.id), r.entity_id),
-  debt: base + owed(list, r.entity_id, r.id) + (r.cancelled ? 0 : sum - paid),
-})
-
 const dues = (v, keys = Object.keys(v), side = 'sale') => keys
   .map(k => `<p class="due"><span>${ts(side, k)}</span><output name="${k}" data-owe="${v[k] > 0}"${k === 'paid' ? ' data-tone="credit"' : ''}>${num(v[k])}</output></p>`)
   .join('')
@@ -102,7 +93,7 @@ const ent = (e = {}, list = [], n = list.filter(r => r.entity_id === e.id).lengt
 
 export const lines = { items: row, pays: pay, entities: ent }
 
-const party = (r, entities, kind = r.kind ?? '', side = sideOf(r), e = entities.find(x => x.id === r.entity_id), name = r.party || e?.name || '', free = kind === 'other') => `<fieldset class="party"><select name="kind" required aria-invalid="${kind ? 'false' : 'true'}" aria-label="${t.kind}">${opts([['', t.kind], ...fields.kind.options.map(k => [k, t[k]])], kind)}</select>${free ? '' : entitySelect(entities, kind, side, e?.id)}${input('party', free || e ? name : '', `placeholder="${ts(side, 'partyName')}"${free ? ` aria-invalid="${name ? 'false' : 'true'}" title="${name ? '' : t.need}"${name ? '' : ' required'}` : ' disabled'}`)}</fieldset>`
+const party = (r, entities, kind = r.kind ?? '', side = sideOf(r), { free, entity, name } = linked(entities, { kind, side, entity_id: r.entity_id, party: r.party })) => `<fieldset class="party"><select name="kind" required aria-invalid="${kind ? 'false' : 'true'}" aria-label="${t.kind}">${opts([['', t.kind], ...fields.kind.options.map(k => [k, t[k]])], kind)}</select>${free ? '' : entitySelect(entities, kind, side, entity?.id)}${input('party', name, `placeholder="${ts(side, 'partyName')}"${free ? ` aria-invalid="${name ? 'false' : 'true'}" title="${name ? '' : t.need}"${name ? '' : ' required'}` : ' disabled'}`)}</fieldset>`
 
 const editor = (r, list, entities, side = sideOf(r), sum = tally(r.items), paid = tally(r.payments, 'amount'), base = r.base ?? entities.find(e => e.id === r.entity_id)?.debt ?? 0) => `
   <form id="editor" class="doc" novalidate>
